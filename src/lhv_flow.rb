@@ -152,7 +152,513 @@ Navesti.define :lhv_oauth do
       
       data
     end
+=begin
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
     
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+    # Step to check authorization status
+    step "get_oauth_authorization_status" do |data|
+      if data[:authorization_id]
+        url = "#{data[:base_url]}/oauth/authorisations/#{data[:authorization_id]}"
+        
+        headers = {
+          'Accept' => 'application/hal+json;charset=UTF-8',
+          'X-Request-ID' => SecureRandom.uuid,
+        }
+        
+        begin
+          pp "Making request to: #{url}"
+          pp "Headers: #{JSON.pretty_generate(headers)}"
+          
+          response = RestClient::Request.execute(
+            method: :get,
+            url: url,
+            headers: headers,
+            **data[:ssl_options]
+          )
+          puts "\n"
+          pp "===================================================================="
+          pp "response from get_oauth_authorization_status: #{response}"
+          pp "===================================================================="
+          puts "\n"
+          
+          data[:authorization_status] = JSON.parse(response.body)
+        rescue RestClient::ExceptionWithResponse => e
+          pp "HTTP Request failed with response code #{e.http_code}"
+          pp "Response body: #{e.response.body}"
+          pp "Request headers: #{headers}"
+          data[:authorization_status] = nil
+        rescue StandardError => e
+          pp "An error occurred: #{e.message}"
+          pp "Full error: #{e.class}: #{e.message}"
+          pp e.backtrace.join("\n") if e.backtrace
+          data[:authorization_status] = nil
+        end
+      end
+      
+      data
+    end
+=end
     # Step to get OAuth token
     step "get_oauth_token" do |data|
       if data[:code] && data[:client_id]
@@ -236,7 +742,7 @@ if __FILE__ == $0
   if result[:authorization_result]
     puts "\nAuthorization successful!"
     puts "Authorization ID: #{result[:authorization_result]['authorisationId']}"
-    puts "Status: #{result[:authorization_result]['status']}"
+    puts "Status: #{result[:authorization_result]['scaStatus']}"
     
     # Check status
     puts "\n=== Step 2: Checking authorization status ==="
@@ -247,17 +753,17 @@ if __FILE__ == $0
     
     if status[:authorization_status]
       puts "\nStatus check successful!"
-      puts "Status: #{status[:authorization_status]['status']}"
+      puts "Status: #{status[:authorization_status]['scaStatus']}"
       
       # If authorization is complete, get token
-      if status[:authorization_status]['status'] == 'FINISHED' &&
+      if status[:authorization_status]['scaStatus'] == 'FINALISED' &&
          status[:authorization_status]['authorizationCode']
          
         puts "\n=== Step 3: Getting OAuth token ==="
         auth_code = status[:authorization_status]['authorizationCode']
         token = Navesti.run(:lhv_oauth, {
           code: auth_code,
-          client_id: ENV['LHV_CLIENT_ID'] || 'TESTCLIENT'
+          client_id: ENV['LHV_CLIENT_ID'] || 'PSDEE-LHVTEST-820163'
         })
         
         if token[:token_result]
@@ -270,7 +776,33 @@ if __FILE__ == $0
         end
       else
         puts "\nAuthorization not yet completed"
-        puts "Current status: #{status[:authorization_status]['status']}"
+        puts "Current status: #{status[:authorization_status]['scaStatus']}"
+        puts "Waiting 10 seconds before checking again..."
+        sleep 10
+        status = Navesti.run(:lhv_oauth, {
+          authorization_id: auth_id
+        })
+        puts "Current status: #{status[:authorization_status]['scaStatus']}"
+        # If authorization is complete, get token
+        if status[:authorization_status]['scaStatus'] == 'FINALISED' &&
+          status[:authorization_status]['authorisationCode']
+          
+          puts "\n=== Step 3: Getting OAuth token ==="
+          auth_code = status[:authorization_status]['authorisationCode']
+          token = Navesti.run(:lhv_oauth, {
+          code: auth_code,
+          client_id: ENV['LHV_CLIENT_ID'] || 'PSDEE-LHVTEST-820163'
+          })
+        
+          if token[:token_result]
+            puts "\nToken retrieval successful!"
+            puts "Access Token: #{token[:token_result]['access_token']}"
+            puts "Expires In: #{token[:token_result]['expires_in']} seconds"
+          else
+            puts "\nToken retrieval FAILED"
+            puts "Error: #{token[:error].inspect}" if token[:error]
+          end 
+        end
       end
     else
       puts "\nStatus check FAILED"
