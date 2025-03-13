@@ -1,4 +1,5 @@
 module Navesti
+  Thread.abort_on_exception = true  # Forces any thread exceptions to be raised immediately
   @workflows = {}
 
   ###########################################################################
@@ -55,9 +56,12 @@ module Navesti
   #
   ###########################################################################
   def self.run(name, data)
+    puts "DEBUG: Starting #{name} workflow"
     workflow = find(name)
     raise "Workflow not found: #{name}" unless workflow
-    workflow.run(data)
+    result = workflow.run(data)
+    puts "DEBUG: Workflow #{name} completed with result type: #{result.class}"
+    result
   end
 
   ###########################################################################
@@ -235,65 +239,96 @@ module Navesti
     #
     ###########################################################################
     def run(data)
-      # 1. Field Mappings: Transform internal fields to external fields.
-      @mappings.each do |mapping|
-        value = data[mapping[:from]]
-        # Apply transformation if provided.
-        if mapping[:transform]
-          if mapping[:transform].is_a?(Proc)
-            value = mapping[:transform].call(value)
-          else
-            value = value.send(mapping[:transform])
-          end
-        end
-
-        # Support nested mapping if :to is an Array.
-        if mapping[:to].is_a?(Array)
-          current = data
-          mapping[:to].each_with_index do |key, index|
-            if index == mapping[:to].size - 1
-              current[key] = value
+      puts "DEBUG: Workflow #{@name} - Starting execution with data: #{data.keys.inspect}"
+      
+      begin
+        # 1. Field Mappings: Transform internal fields to external fields.
+        @mappings.each do |mapping|
+          value = data[mapping[:from]]
+          # Apply transformation if provided.
+          if mapping[:transform]
+            if mapping[:transform].is_a?(Proc)
+              value = mapping[:transform].call(value)
             else
-              current[key] ||= {}
-              current = current[key]
+              value = value.send(mapping[:transform])
             end
           end
+
+          # Support nested mapping if :to is an Array.
+          if mapping[:to].is_a?(Array)
+            current = data
+            mapping[:to].each_with_index do |key, index|
+              if index == mapping[:to].size - 1
+                current[key] = value
+              else
+                current[key] ||= {}
+                current = current[key]
+              end
+            end
+          else
+            data[mapping[:to]] = value
+          end
+        end
+
+        # 2. Sequential Workflow Steps: Process validations and steps.
+        puts "DEBUG: Processing workflow steps (#{@workflow_steps.size} steps total)"
+        
+        # Process each step with additional safeguards
+        @workflow_steps.each_with_index do |step, index|
+          begin
+            puts "DEBUG: About to execute step #{index+1}/#{@workflow_steps.size}: #{step[:name] || step[:type]}"
+            
+            case step[:type]
+            when :check
+              unless step[:block].call(data)
+                raise "Validation failed: #{step[:message]}"
+              end
+            when :step
+              returned_data = step[:block].call(data)
+              
+              # Make sure a step returns something, use the original data if nil returned
+              if returned_data.nil?
+                puts "WARNING: Step #{step[:name]} returned nil, using previous data"
+                # Use the original data
+              else
+                data = returned_data
+              end
+            end
+            
+            puts "DEBUG: Successfully finished step #{index+1}/#{@workflow_steps.size}: #{step[:name] || step[:type]}"
+          rescue => step_error
+            puts "ERROR in step #{step[:name]}: #{step_error.class}: #{step_error.message}"
+            raise step_error # re-raise to be caught by the outer rescue
+          end
+        end
+
+        # 3. Branching Logic: Execute branch steps based on attribute values.
+        @branches.each do |attribute, branch_rules|
+          branch_value = data[attribute]
+          branch_rules.each do |rule|
+            if rule[:value] == branch_value
+              rule[:steps].each do |step|
+                data = step[:block].call(data)
+              end
+            end
+          end
+        end
+
+        puts "DEBUG: All steps processed. Total steps: #{@workflow_steps.size}"
+        puts "DEBUG: Workflow #{@name} - All steps completed, returning data"
+        puts "DEBUG: Final data keys: #{data.keys.inspect}"
+        return data # Explicitly return the data
+      rescue => e
+        puts "DEBUG: Workflow #{@name} - Error occurred: #{e.class}: #{e.message}"
+        # Global error handler: Invoke if defined; otherwise, re-raise the error.
+        if @error_handler
+          result = @error_handler.call(e, data)
+          puts "DEBUG: Workflow #{@name} - Error handler executed, returning: #{result.keys.inspect}"
+          return result  # Explicitly return the result from error handler
         else
-          data[mapping[:to]] = value
+          puts "DEBUG: Workflow #{@name} - No error handler, re-raising exception"
+          raise e
         end
-      end
-
-      # 2. Sequential Workflow Steps: Process validations and steps.
-      @workflow_steps.each do |step|
-        case step[:type]
-        when :check
-          unless step[:block].call(data)
-            raise "Validation failed: #{step[:message]}"
-          end
-        when :step
-          data = step[:block].call(data)
-        end
-      end
-
-      # 3. Branching Logic: Execute branch steps based on attribute values.
-      @branches.each do |attribute, branch_rules|
-        branch_value = data[attribute]
-        branch_rules.each do |rule|
-          if rule[:value] == branch_value
-            rule[:steps].each do |step|
-              data = step[:block].call(data)
-            end
-          end
-        end
-      end
-
-      data
-    rescue => e
-      # Global error handler: Invoke if defined; otherwise, re-raise the error.
-      if @error_handler
-        @error_handler.call(e, data)
-      else
-        raise e
       end
     end
   end
