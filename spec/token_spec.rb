@@ -146,17 +146,24 @@ RSpec.describe RevolutOBClient do
   end
   
   describe "#get_consent_from_the_user" do
-    it "returns a valid jwt" do
+    it "returns a redirect URL" do
       redirect_url = client.get_consent_from_the_user(access_token: access_token, consent_id: consent_id)
-      puts "JWT: #{redirect_url}"
-      LOGGER.info("JWT: #{redirect_url}")
+      puts "Redirect URL: #{redirect_url}"
+      LOGGER.info("Redirect URL: #{redirect_url}")
       # Open the URL in the default web browser
       system("xdg-open '#{redirect_url}'") if RUBY_PLATFORM.include?("linux")  # Linux
-      system("open -a Safari '#{redirect_url}'") if RUBY_PLATFORM.include?("darwin")  # Mac
+      #system("open -a Safari '#{redirect_url}'") if RUBY_PLATFORM.include?("darwin")  # Mac
       system("start #{redirect_url}") if RUBY_PLATFORM.include?("mswin")  # Windows
-
+      sleep 30
+      LOGGER.info("Checking consent status after authorization")
+      puts "Checking consent status after authorization"
+      consent_status = client.retrieve_an_account_access_consent(access_token: access_token, consent_id: consent_id)
+      LOGGER.info("Consent status: #{consent_status['Data']['Status']}")
+      puts "Consent status: #{consent_status['Data']['Status']}"
+      expect(consent_status['Data']['Status']).to eq('Authorised')
     end
   end
+
 
   describe "#retrieve_all_accounts" do
     it "returns a valid list of accounts" do

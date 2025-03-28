@@ -151,10 +151,10 @@ class RevolutOBClient
       "kid": "007"
     }
 
-    payload = URI.encode_www_form({
+    payload = {
       'response_type' => 'code id_token',
       'client_id' => @client_id,
-      'redirect_uri' => 'https://example.com',
+      'redirect_uri' => 'https://www.google.com',
       'aud' => 'https://sandbox-oba-auth.revolut.com',
       'scope' => 'accounts',
       'state' => "#{SecureRandom.uuid}",
@@ -167,10 +167,11 @@ class RevolutOBClient
           }
         }
       }
-    })
+    }
 
     jwt = JWT.encode(payload, @ssl_options[:ssl_client_key], 'PS256', header)
-    revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://example.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=#{jwt}"
+    revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://www.google.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=#{jwt}"
+    revolut_url
   end
 
   def retrieve_all_accounts(access_token:)
