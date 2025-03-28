@@ -2,6 +2,7 @@ require 'json'
 require 'rest-client'
 require 'securerandom'
 require 'pp'
+require 'jwt'
 
 class RevolutOBClient
   def initialize
@@ -142,6 +143,34 @@ class RevolutOBClient
       pp e.backtrace.join("\n") if e.backtrace
       nil
     end
+  end
+
+  def get_consent_from_the_user(access_token:, consent_id:)
+    header = {
+      "alg": "PS256",
+      "kid": "007"
+    }
+
+    payload = {
+      "response_type": "code id_token",
+      "client_id": "d099c903-2443-410e-844e-7282c6ec118f",
+      "redirect_uri": "https://example.com",
+      "aud": "https://sandbox-oba-auth.revolut.com",
+      "scope": "accounts",
+      #"state": "#{SecureRandom.uuid}",
+      "nbf": 1738158653,
+      "exp": 1738161953,
+      "claims": {
+        "id_token": {
+          "openbanking_intent_id": {
+            "value": "882bcf2e-4b6a-4772-b264-ae17e0adf624"
+          }
+        }
+      }
+    }
+
+    jwt = JWT.encode(payload, @ssl_options[:ssl_client_key], 'PS256', header)
+    revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://google.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=#{jwt}"
   end
 
   def retrieve_all_accounts(access_token:)

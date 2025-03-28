@@ -1,12 +1,15 @@
 GEM
   remote: https://rubygems.org/
   specs:
+    base64 (0.2.0)
     diff-lcs (1.6.1)
     domain_name (0.6.20240107)
     http-accept (1.7.0)
     http-cookie (1.0.8)
       domain_name (~> 0.5)
     json (2.10.2)
+    jwt (2.10.1)
+      base64
     logger (1.7.0)
     mime-types (3.6.2)
       logger
@@ -43,6 +46,7 @@ PLATFORMS
 
 DEPENDENCIES
   json
+  jwt
   openssl
   pp
   rest-client

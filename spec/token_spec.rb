@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'json'
 require 'logger'
+require 'jwt'
 
 # Initialize logger with timestamp in filename
 timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
@@ -249,4 +250,11 @@ RSpec.describe RevolutOBClient do
     end
   end
   
+  describe "#get_consent_from_the_user" do
+    it "returns a valid jwt" do
+      jwt = client.get_consent_from_the_user(access_token: access_token, consent_id: consent_id)
+      puts "JWT: #{jwt}"
+      LOGGER.info("JWT: #{jwt}")
+    end
+  end
 end
