@@ -26,16 +26,16 @@ class RevolutOBClient
       'Content-Type' => 'application/x-www-form-urlencoded'
     }
 
-    payload = {
+    payload = URI.encode_www_form(
       'grant_type' => 'client_credentials',
       'scope' => 'accounts',
       'client_id' => @client_id
-    }
+    )
 
     begin
       pp "Making request to: #{url}"
       pp "Headers: #{JSON.pretty_generate(headers)}"
-      pp "Payload: #{payload.to_json}"
+      pp "Payload: #{payload}"
         
       response = RestClient::Request.execute(
         method: :post,
@@ -151,26 +151,26 @@ class RevolutOBClient
       "kid": "007"
     }
 
-    payload = {
-      "response_type": "code id_token",
-      "client_id": "d099c903-2443-410e-844e-7282c6ec118f",
-      "redirect_uri": "https://example.com",
-      "aud": "https://sandbox-oba-auth.revolut.com",
-      "scope": "accounts",
-      #"state": "#{SecureRandom.uuid}",
-      "nbf": 1738158653,
-      "exp": 1738161953,
-      "claims": {
-        "id_token": {
-          "openbanking_intent_id": {
-            "value": "882bcf2e-4b6a-4772-b264-ae17e0adf624"
+    payload = URI.encode_www_form({
+      'response_type' => 'code id_token',
+      'client_id' => @client_id,
+      'redirect_uri' => 'https://example.com',
+      'aud' => 'https://sandbox-oba-auth.revolut.com',
+      'scope' => 'accounts',
+      'state' => "#{SecureRandom.uuid}",
+      'nbf' => 1738158653,
+      'exp' => 1738161953,
+      'claims' => {
+        'id_token' => {
+          'openbanking_intent_id' => {
+            'value' => "#{consent_id}"
           }
         }
       }
-    }
+    })
 
     jwt = JWT.encode(payload, @ssl_options[:ssl_client_key], 'PS256', header)
-    revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://google.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=#{jwt}"
+    revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://example.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=#{jwt}"
   end
 
   def retrieve_all_accounts(access_token:)
