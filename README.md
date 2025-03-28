@@ -42,3 +42,9 @@ At the sandbox environment, you will have to put the number +44 7258777150 and 0
 5. retrieve_all_accounts
 
 Retrieve all accounts from the Revolut Open Banking API.
+
+
+# Run the code
+
+- At the moment
+    - make test_token 
