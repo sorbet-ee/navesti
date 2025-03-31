@@ -37,14 +37,41 @@ Example:  https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_
 
 At the sandbox environment, you will have to put the number +44 7258777150 and 0000 for the password, then accept the authorization and then redirects you to the redirect page you defined. ( you must have defined in the development revolut account, in the jwt, and in the url)
 
-
+Copy Paste the redirected url to the terminal and code needed for the next steps will be generated.
 
 5. retrieve_all_accounts
 
 Retrieve all accounts from the Revolut Open Banking API.
 
+6. retrieve_an_account
+
+Retrieve an account from the Revolut Open Banking API.
+
+7. exchange_code_for_access_token
+
+Exchange the code for an access token.
+
+8. retrieve_an_accounts_all_transactions
+
+Retrieve account's all transactions from the Revolut Open Banking API.
+
+9. retrieve_an_accounts_all_standing_orders
+
+Retrieve account's all standing orders from the Revolut Open Banking API.
+
+10. retrieve_an_accounts_all_direct_debits
+
+Retrieve account's all direct debits from the Revolut Open Banking API.
+
+11. retrieve_an_accounts_all_beneficiaries
+
+Retrieve account's all beneficiaries from the Revolut Open Banking API.
+
+12. retrieve_an_account_balance
+
+Retrieve account's balance from the Revolut Open Banking API.
 
 # Run the code
 
 - At the moment
-    - make test_token 
+    - make test_accounts

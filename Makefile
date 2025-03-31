@@ -1,4 +1,4 @@
-.PHONY: test test_token clean
+.PHONY: test test_accounts clean
 
 # Default test directory
 SPEC_DIR = spec
@@ -16,10 +16,16 @@ clean:
 	rm -rf $(TEST_RESULTS_DIR)/*
 
 # Run Token Tests only
-test_token: $(TEST_RESULTS_DIR)
-	@echo "Running Token Tests..."
-	$(RSPEC) $(SPEC_DIR)/token_spec.rb
-	@echo "Token Tests completed."
+test_accounts: $(TEST_RESULTS_DIR)
+	@echo "Running Accounts Tests..."
+	$(RSPEC) $(SPEC_DIR)/accounts_spec.rb
+	@echo "Accounts Tests completed."
+
+# Run Transactions Tests only
+test_transactions: $(TEST_RESULTS_DIR)
+	@echo "Running Transactions Tests..."
+	$(RSPEC) $(SPEC_DIR)/transactions_spec.rb
+	@echo "Transactions Tests completed."
 
 # Run all tests in sequence
 test_all: clean test_token
