@@ -1,0 +1,15 @@
+source 'https://rubygems.org'
+
+# Add required gems
+gem 'rspec'
+gem 'rest-client'
+gem 'json'
+gem 'pp'
+gem 'securerandom'
+gem 'openssl'
+gem 'jwt'
+gem 'sinatra'
+gem 'webrick'
+gem 'cgi'
+gem 'launchy'
+gem 'uri'
