@@ -160,30 +160,7 @@ RSpec.describe RevolutOBClient do
   
   describe "#get_consent_from_the_user" do
     it "returns a valid code" do
-      # Step 1: Get the authorization URL
-      authorization_url = client.get_consent_from_the_user(access_token: access_token, consent_id: consent_id)
-      
-      # Step 2: Prompt user to complete authorization
-      puts "Open the following URL in your browser to authorize: "
-      Launchy.open(authorization_url)
-      puts "After authorization, paste the redirected URL here: "
-      
-      # Step 3: Pause execution and wait for user input
-      redirected_url = $stdin.gets.chomp.strip  # Ensures input is read properly
-
-      # Validate the URL format
-      unless redirected_url.match?(/^https?:\/\/\S+/)
-        raise URI::InvalidURIError, "Invalid URL provided: #{redirected_url}"
-      end
-
-      # Step 4: Extract authorization code from the redirected URL
-      parsed_params = CGI.parse(URI.parse(redirected_url).query)
-      auth_data = {
-        code: parsed_params["code"]&.first,
-        id_token: parsed_params["id_token"]&.first,
-        state: parsed_params["state"]&.first
-      }
-
+      auth_data = client.get_consent_from_the_user(access_token: access_token, consent_id: consent_id)
       LOGGER.info("Checking consent status after authorization")
       puts "Checking consent status after authorization"
       consent_status = client.retrieve_an_account_access_consent(access_token: access_token, consent_id: consent_id)
@@ -366,5 +343,4 @@ RSpec.describe RevolutOBClient do
     end
   end
 
-  
 end

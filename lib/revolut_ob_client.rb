@@ -185,7 +185,32 @@ class RevolutOBClient
     
     jwt = JWT.encode(payload, @ssl_options[:ssl_client_key], 'PS256', header)
     revolut_url = "https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=#{payload['redirect_uri']}&client_id=#{@client_id}&request=#{jwt}"
-    revolut_url
+    
+    # Step 1: Get the authorization URL
+    authorization_url = revolut_url
+    
+    # Step 2: Prompt user to complete authorization
+    puts "Open the following URL in your browser to authorize: "
+    Launchy.open(authorization_url)
+    puts "After authorization, paste the redirected URL here: "
+    
+    # Step 3: Pause execution and wait for user input
+    redirected_url = $stdin.gets.chomp.strip  # Ensures input is read properly
+
+    # Validate the URL format
+    unless redirected_url.match?(/^https?:\/\/\S+/)
+      raise URI::InvalidURIError, "Invalid URL provided: #{redirected_url}"
+    end
+
+    # Step 4: Extract authorization code from the redirected URL
+    parsed_params = CGI.parse(URI.parse(redirected_url).query)
+    auth_data = {
+      code: parsed_params["code"]&.first,
+      id_token: parsed_params["id_token"]&.first,
+      state: parsed_params["state"]&.first
+    }
+
+    auth_data
   end
 
   def retrieve_all_accounts(access_token:)
@@ -494,7 +519,7 @@ class RevolutOBClient
       'Authorization' => "Bearer #{access_token}",
       'x-fapi-financial-id' => '001580000103UAvAAM',
       'x-jws-signature' => jwt,
-      'x-idempotency-key'
+      'x-idempotency-key' => '123456789'
     }
 
     payload = {
