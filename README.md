@@ -8,70 +8,42 @@ Navesti is Sorbet's DSL used to integrate to any type of backend integrations
 
 This is a Ruby client for the Revolut Open Banking API.
 
-## Methods
-
-1. get_access_token
-
-Gets an access_token. Stores it in test_results/access_token.json
-
-2. create_an_account_access_consent
-
-Create an account access consent. Stores it in test_results/account_access_consent.json. We need the consent_id from this response to retrieve the account access consent. (start the authorization process)
-
-3. retrieve_an_account_access_consent
-
-Retrieve an account access consent. We need the consent_id from the previous response to retrieve the account access consent. (start the authorization process)
-
-4. get_consent_from_the_user
-
-Redirects us to Revolut's authorization page. We make the url.
-It consists of:
-- response_type: code id_token
-- scope: accounts
-- redirect_uri: https://example.com
-- client_id: d099c903-2443-410e-844e-7282c6ec118f
-- request: jwt
-
-
-Example:  https://sandbox-oba.revolut.com/ui/index.html?response_type=code%20id_token&scope=accounts&redirect_uri=https://example.com&client_id=d099c903-2443-410e-844e-7282c6ec118f&request=eyJhbGciOiJQUzI1NiIsImtpZCI6IjAwNyJ9.InJlc3BvbnNlX3R5cGU9Y29kZStpZF90b2tlbiZjbGllbnRfaWQ9ZDA5OWM5MDMtMjQ0My00MTBlLTg0NGUtNzI4MmM2ZWMxMThmJnJlZGlyZWN0X3VyaT1odHRwcyUzQSUyRiUyRmV4YW1wbGUuY29tJmF1ZD1odHRwcyUzQSUyRiUyRnNhbmRib3gtb2JhLWF1dGgucmV2b2x1dC5jb20mc2NvcGU9YWNjb3VudHMmc3RhdGU9NThmZjFkMWQtZWJmMi00MWIxLTk3ZmUtYmU2MDUyYWY1MjNmJm5iZj0xNzM4MTU4NjUzJmV4cD0xNzM4MTYxOTUzJmNsYWltcz0lN0IlMjJpZF90b2tlbiUyMiUzRCUzRSU3QiUyMm9wZW5iYW5raW5nX2ludGVudF9pZCUyMiUzRCUzRSU3QiUyMnZhbHVlJTIyJTNEJTNFJTIyNTM0YjAwYmMtMDk4Yi00NGU4LWJhYzAtMDc5ZmY0MzFkMzRiJTIyJTdEJTdEJTdEIg.edNEyPYzdSVZlAieWPr-RQ3po3TdPSzaMOEoD7TpLKXkEyx0n-ttyYOLp2tMMZ4tNktO5YndkSYX2mDJ3S2SBPuZbZQ0zEje60tlMssaZI2upGwkLvYpstB3IAGFxeyh755FX78Eb48KMJ1WC2uMMpV_33avWka-bJFfVOZ97Ks3YeOc8epT3KDFFfbrhWphB6852fKDGjd8jrg43qbi-gWoPqMvl85QJgJdca_G7d66HgjFZifl4KEVoVWfwVbVDxSvOwJqxV31gtiZaxf7oaMtVLjiGpiF-7VGN-oZbBrZej82bHxzIIB_7mtCBrIV1axrUyr-kToNQPPgcKcYqg
-
-At the sandbox environment, you will have to put the number +44 7258777150 and 0000 for the password, then accept the authorization and then redirects you to the redirect page you defined. ( you must have defined in the development revolut account, in the jwt, and in the url)
-
-Copy Paste the redirected url to the terminal and code needed for the next steps will be generated.
-
-5. retrieve_all_accounts
-
-Retrieve all accounts from the Revolut Open Banking API.
-
-6. retrieve_an_account
-
-Retrieve an account from the Revolut Open Banking API.
-
-7. exchange_code_for_access_token
-
-Exchange the code for an access token.
-
-8. retrieve_an_accounts_all_transactions
-
-Retrieve account's all transactions from the Revolut Open Banking API.
-
-9. retrieve_an_accounts_all_standing_orders
-
-Retrieve account's all standing orders from the Revolut Open Banking API.
-
-10. retrieve_an_accounts_all_direct_debits
-
-Retrieve account's all direct debits from the Revolut Open Banking API.
-
-11. retrieve_an_accounts_all_beneficiaries
-
-Retrieve account's all beneficiaries from the Revolut Open Banking API.
-
-12. retrieve_an_account_balance
-
-Retrieve account's balance from the Revolut Open Banking API.
 
 # Run the code
 
 - At the moment
-    - make test_accounts
+    - make test_accounts # Runs only the Accounts test suite
+    - make test_transactions # Runs only the Transactions test suite
+    - make test # Runs all the test suites
+
+# INFORMATIONS BEFORE RUNNING THE CODE
+
+- You need to have a Revolut account in the Revolut Developer portal
+- You need to type the 6 digit code you receive in your email to login
+- After logging in, you need to create an application to test your code in the developer portal
+- There you must fill or see:
+    1. Redirect urls -> Urls to redirect after the authorisation process
+    2. Your sandbox certificates -> Upload the CSR file
+    3. At any time you can check or uncheck the Open Banking API Scopes
+    4. On Test Accounts section you will find the 
+        1. Number and password needed for every authorisation.
+        2. Number is 7258777150 --->(+44)<---
+        3. Password is 0000
+    5. The Client ID for the sandbox environment in the Overview section
+    6. JWKs endpoint
+        1. There you should place the JWKs URL that you store the jwks.json and the private key.
+        You need that URL to be a public url so that the Revolut API can access it.
+
+# Use my settings if you want
+
+- If you want to use my existing account, ask for the email and password 
+
+
+# Flow
+
+- If all are set up correctly, you can run the code
+    1.  make test
+    2.  copy paste the number and password
+    3.  accept the authorisation
+    4.  wait for the redirection, then copy paste the redirected url to the terminal (it waits for you)
+    5.  repeat steps 2,3,4 until the flow ends

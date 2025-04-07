@@ -31,7 +31,7 @@ RSpec.describe RevolutOBClient do
     JSON.parse(File.read(account_access_consent_path))['Data']['ConsentId']
   end
   let(:code) do
-    code_path = File.expand_path('../test_results/code.json', __dir__)
+    code_path = File.expand_path('../test_results/account_consent_code.json', __dir__)
     JSON.parse(File.read(code_path))['code']
   end
   let(:new_access_token) do
@@ -160,7 +160,11 @@ RSpec.describe RevolutOBClient do
   
   describe "#get_consent_from_the_user" do
     it "returns a valid code" do
-      auth_data = client.get_consent_from_the_user(access_token: access_token, consent_id: consent_id)
+      LOGGER.info("↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓")
+      LOGGER.info("Getting consent from the user...")
+      puts "↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓"
+      puts "Getting consent from the user..."
+      auth_data = client.get_account_access_consent_from_the_user(access_token: access_token, consent_id: consent_id)
       LOGGER.info("Checking consent status after authorization")
       puts "Checking consent status after authorization"
       consent_status = client.retrieve_an_account_access_consent(access_token: access_token, consent_id: consent_id)
@@ -175,10 +179,13 @@ RSpec.describe RevolutOBClient do
       expect(auth_data[:code]).to be_a(String)
 
       # Save the code to a file
-      code_file = File.expand_path('../test_results/code.json', __dir__)
+      code_file = File.expand_path('../test_results/account_consent_code.json', __dir__)
       File.write(code_file, JSON.pretty_generate(auth_data))
 
       LOGGER.info("Code saved to file: #{code_file}")
+      LOGGER.info("Authorization completed successfully")
+      LOGGER.info("↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑")
+      puts "↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
       LOGGER.info("Authorization completed successfully")
     end
   end

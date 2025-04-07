@@ -3,10 +3,12 @@ GEM
   specs:
     addressable (2.8.7)
       public_suffix (>= 2.0.2, < 7.0)
+    awesome_print (1.9.2)
     base64 (0.2.0)
     cgi (0.4.2)
     childprocess (5.1.0)
       logger (~> 1.5)
+    colorize (1.1.0)
     diff-lcs (1.6.1)
     domain_name (0.6.20240107)
     http-accept (1.7.0)
@@ -76,7 +78,9 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  awesome_print
   cgi
+  colorize
   json
   jwt
   launchy

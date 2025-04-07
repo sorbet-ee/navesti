@@ -1,4 +1,4 @@
-.PHONY: test test_accounts clean
+.PHONY: test test_accounts test_transactions clean
 
 # Default test directory
 SPEC_DIR = spec
@@ -28,7 +28,7 @@ test_transactions: $(TEST_RESULTS_DIR)
 	@echo "Transactions Tests completed."
 
 # Run all tests in sequence
-test_all: clean test_token
+test_all: clean test_accounts test_transactions
 	@echo "All tests completed."
 
 # Default target
