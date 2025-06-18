@@ -550,6 +550,10 @@ module Navesti
       get(data[:url], data[:headers], fmt)
     end
 
+    def self.show_account(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
 
     ###########################################################################
     #
