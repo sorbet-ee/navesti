@@ -1,6 +1,6 @@
 # to run the flow in terminal
-ruby swedbank_flow_example.rb
-ruby swedbank_pis_flow_example.rb
+-ruby swedbank_flow_example.rb
+-ruby swedbank_pis_flow_example.rb
 
 # Workflows
 - show_accounts
