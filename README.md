@@ -7,3 +7,4 @@ ruby swedbank_flow_example.rb
 - show_specific_account
 - show_account_balances
 - show_account_transactions
+- initiate_payment
