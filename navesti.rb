@@ -562,6 +562,17 @@ module Navesti
       get(data[:url], data[:headers], fmt)
     end
 
+    def self.get_payment_status(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
+    def self.show_payment_details(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
+    def self.get_sca_status(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
 
     ###########################################################################
     #

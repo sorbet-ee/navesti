@@ -339,4 +339,56 @@ Navesti.define :show_account_transactions do
   end
 end
 
+Navesti.define :initiate_payment do
+  format :json
 
+  source :initiate_payment_parameters do
+  end
+  
+  workflow do
+    initial_data = nil
+    
+    step "initiate payment" do |data|
+      initial_data = data
+      initiate_payment_response = Navesti::ExternalServices.initiate_payment(data)
+      initial_data.merge!(initiate_payment_response: initiate_payment_response)
+      pp "Step 1: Initiating Payment executed"
+      pp initial_data[:initiate_payment_response]
+      data
+    end
+
+    step "Open browser to accept consent" do |data|
+      system("open #{data[:initiate_payment_response]['_links']['scaRedirect']['href']}")
+      pp "Step 2: Opening Browser to Accept Consent executed"
+      sleep 10
+      data
+    end
+
+    step "Get payment status after approval" do |data|
+      data[:url] = data[:base_url] + data[:initiate_payment_response]["_links"]["status"]["href"] + "?bic=" + data[:bic] + "&app-id=" + data[:app_id]
+      get_status_response = Navesti::ExternalServices.get_payment_status(data)
+      data.merge!(get_status_response: get_status_response)
+      pp "Step 3: Getting Payment Status After Approval executed"
+      pp data[:get_status_response]
+      data
+    end
+
+    step "Show payment details" do |data|
+      data[:url] = data[:base_url] + data[:initiate_payment_response]["_links"]["self"]["href"] + "?bic=" + data[:bic] + "&app-id=" + data[:app_id]
+      get_payment_details_response = Navesti::ExternalServices.show_payment_details(data)
+      data.merge!(get_payment_details_response: get_payment_details_response)
+      pp "Step 4: Showing Payment Details executed"
+      pp data[:get_payment_details_response]
+      data
+    end
+  end
+
+  step "Get scaStatus" do |data|
+    data[:url] = data[:base_url] + data[:initiate_payment_response]["_links"]["scaStatus"]["href"] + "?bic=" + data[:bic] + "&app-id=" + data[:app_id]
+    get_sca_status_response = Navesti::ExternalServices.get_sca_status(data)
+    data.merge!(get_sca_status_response: get_sca_status_response)
+    pp "Step 5: Getting SCA Status executed"
+    pp data[:get_sca_status_response]
+    data[:get_sca_status_response]
+  end
+end
