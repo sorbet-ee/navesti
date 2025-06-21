@@ -554,6 +554,14 @@ module Navesti
       get(data[:url], data[:headers], fmt)
     end
 
+    def self.show_account_balances(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
+    def self.show_account_transactions(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
 
     ###########################################################################
     #
