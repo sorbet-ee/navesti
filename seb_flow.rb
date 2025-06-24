@@ -227,6 +227,217 @@ Navesti.define :show_account_transactions_details do
     end
 end
 
+Navesti.define :payment_initiation do
+    format :json
+
+    source :payment_initiation_parameters do
+    end
+    
+    workflow do
+        initial_data = nil
+        step "Initiate Authorization in :payment_initiation" do |data|
+            url = "#{data[:base_url]}/auth/#{data[:authorization_version]}/authorizations"
+            data[:url] = url
+            data[:payload] = {
+                "client_id" => data[:client_id],
+                "scope" => data[:scope],
+                "start_mode" => "ast"
+            }
+            initial_data = data
+            initiate_authorization_response = Navesti::ExternalServices.initiate_authorization(data)
+            initial_data.merge!(initiate_authorization_response: initiate_authorization_response)
+            pp "Step 1: Initiate Authorization in :payment_initiation executed"
+            pp initial_data[:initiate_authorization_response]
+            initial_data
+        end
+
+        step "Retrieve Token After Authorization in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/auth/#{data[:authorization_version]}/authorizations/#{data[:initiate_authorization_response]["auth_req_id"]}"
+            retrieve_token_after_authorization_response = Navesti::ExternalServices.retrieve_token_after_authorization_step(data)
+            initial_data.merge!(retrieve_token_after_authorization_response: retrieve_token_after_authorization_response)
+            pp "Step 2: Retrieve Token After Authorization in :payment_initiation executed"
+            pp initial_data[:retrieve_token_after_authorization_response]
+            initial_data
+        end
+
+        step "Start Bank ID App Simulation in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/open/sb/auth/mock/v1/login"
+            data[:payload] = {
+                "personal_identity_number" => "199311219639",
+                "start_token" => data[:retrieve_token_after_authorization_response]["autostart_token"]
+            }
+            start_bank_id_app_simulation_response = Navesti::ExternalServices.start_bank_id_app_simulation(data)
+            initial_data.merge!(start_bank_id_app_simulation_response: start_bank_id_app_simulation_response)
+            pp "Step 3: Start Bank ID App Simulation in :payment_initiation executed"
+            pp initial_data[:start_bank_id_app_simulation_response]
+            initial_data
+        end
+
+        step "Polling Status in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/auth/#{data[:authorization_version]}/authorizations/#{data[:initiate_authorization_response]["auth_req_id"]}"
+            polling_status_response = Navesti::ExternalServices.get_sca_status(data)
+            initial_data.merge!(polling_status_response: polling_status_response)
+            pp "Step 4: Polling Status in :payment_initiation executed"
+            pp initial_data[:polling_status_response]
+            initial_data
+        end
+
+        step "Get Access Token in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/auth/#{data[:authorization_version]}/tokens"
+            data[:payload] = {
+                "auth_req_id" => data[:initiate_authorization_response]["auth_req_id"],
+                "client_id" => data[:client_id],
+                "client_secret" => data[:client_secret],
+                "redirect_uri" => "https://www.google.com"
+            }
+            access_token_response = Navesti::ExternalServices.get_access_token(data)
+            initial_data.merge!(access_token_response: access_token_response)
+            pp "Step 5: Get Access Token in :payment_initiation executed"
+            pp initial_data[:access_token_response]
+            initial_data
+        end
+
+        step "Retrieve an Access Token with a Refresh Token in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/auth/#{data[:authorization_version]}/tokens"
+            data[:payload] = {
+                "refresh_token" => data[:access_token_response]["refresh_token"],
+                "client_id" => data[:client_id],
+                "client_secret" => data[:client_secret],
+                "redirect_uri" => "https://www.google.com"
+            }
+            access_token_response = Navesti::ExternalServices.retrieve_an_access_token_with_a_refresh_token(data)
+            initial_data.merge!(access_token_response: access_token_response)
+            pp "Step 6: Retrieve an Access Token with a Refresh Token in :payment_initiation executed"
+            pp initial_data[:access_token_response]
+            initial_data
+        end
+
+        step "Get templates in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2/templates"
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid,
+                "Authorization" => "Bearer #{data[:access_token_response]["access_token"]}"
+            )
+            templates_response = Navesti::ExternalServices.get_templates(data)
+            initial_data.merge!(templates_response: templates_response)
+            pp "Step 7: Get templates in :payment_initiation executed"
+            pp initial_data[:templates_response]
+            initial_data
+        end
+
+        step "Get template in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2/templates/#{data[:templates_response][4]["templateId"]}"
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid,
+                "Authorization" => "Bearer #{data[:access_token_response]["access_token"]}"
+            )
+            template_response = Navesti::ExternalServices.get_template(data)
+            initial_data.merge!(template_response: template_response)
+            pp "Step 8: Get template in :payment_initiation executed"
+            pp initial_data[:template_response]
+            initial_data
+        end
+
+        step "Create payment initiation in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2/payments/#{data[:templates_response][4]["templateId"]}"
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid
+            )
+            data[:payload] = {
+                "templateId" => data[:templates_response][4]["templateId"],
+                "instructionId" => "Payment info",
+                "endToEndIdentification" => "string",
+                "instructedAmount" => {
+                  "amount" => "1",
+                  "currency" => "EUR"
+                },
+                "requestedExecutionDate" => (Date.today + 1).to_s,
+                "debtorAccount" => {
+                  "iban" => "SE3750000000054400047881"
+                },
+                "creditorAccount" => {
+                  "iban" => "SE3750000000054400047881"
+                },
+                "creditorAgentBic" => "ESSESSESSXXX",
+                "creditorName" => "string",
+                "regulatoryReporting" => [
+                  {
+                    "debitCreditReportingIndicator" => "DEBT",
+                    "reportingCode" => "string",
+                    "reportingInformation" => "string"
+                  }
+                ],
+                "remittanceInformationUnstructured" => "Liten drake"
+            }
+
+            payment_initiation_response = Navesti::ExternalServices.initiate_payment(data)
+            initial_data.merge!(payment_initiation_response: payment_initiation_response)
+            pp "Step 9: Create payment initiation in :payment_initiation executed"
+            pp initial_data[:payment_initiation_response]
+            initial_data
+        end
+
+        step "Get payment initiation status in :payment_initiation" do |data|
+            sleep 5
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2" + data[:payment_initiation_response]["_links"]["status"]["href"]
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid
+            )
+            payment_initiation_status_response = Navesti::ExternalServices.get_payment_status(data)
+            initial_data.merge!(payment_initiation_status_response: payment_initiation_status_response)
+            pp "Step 10: Get payment initiation status in :payment_initiation executed"
+            pp initial_data[:payment_initiation_status_response]
+            initial_data
+        end
+
+        step "Start payment authorization in :payment_initiation" do |data|
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2/payments/#{data[:templates_response][4]["templateId"]}/#{data[:payment_initiation_response]["paymentId"]}/authorisations"
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid,
+                "TPP-Redirect-URI" => "https://www.google.com"
+            )
+            data[:payload] = {
+                "authenticationMethodId" => "mobiltbankid"
+            }
+            pp "data url"
+            pp data[:url]
+            payment_authorization_response = Navesti::ExternalServices.initiate_authorization(data)
+            initial_data.merge!(payment_authorization_response: payment_authorization_response)
+            pp "Step 11: Start payment authorization in :payment_initiation executed"
+            pp initial_data[:payment_authorization_response]
+            sleep 5
+            initial_data
+        end
+
+        step "Get sca Status in :payment_initiation" do |data|
+            sleep 10
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2/payments/#{data[:templates_response][4]["templateId"]}/#{data[:payment_initiation_response]["paymentId"]}/authorisations/#{data[:payment_authorization_response]["authorisationId"]}"
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid
+            )
+            sca_status_response = Navesti::ExternalServices.get_sca_status(data)
+            initial_data.merge!(sca_status_response: sca_status_response)
+            pp "Step 12: Get sca Status in :payment_initiation executed"
+            pp initial_data[:sca_status_response]
+            initial_data
+        end
+
+        step "Get payment status after authorization in :payment_initiation" do |data|
+            sleep 5
+            data[:url] = data[:base_url] + "/pis/#{data[:payment_initiation_version]}/identified2" + data[:payment_initiation_response]["_links"]["status"]["href"]
+            data[:headers].merge!(
+                "X-Request-Id" => SecureRandom.uuid
+            )
+            payment_initiation_status_response = Navesti::ExternalServices.get_payment_status(data)
+            initial_data.merge!(payment_initiation_status_response: payment_initiation_status_response)
+            pp "Step 13: Get payment initiation status in :payment_initiation executed"
+            pp initial_data[:payment_initiation_status_response]
+            initial_data[:payment_initiation_status_response]
+        end
+    end
+end
+
+
 
 
   

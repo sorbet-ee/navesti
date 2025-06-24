@@ -9,7 +9,7 @@ puts "Starting the SEB Open Banking AIS workflow..."
 
 begin
   #
-  # :initiate_authorization
+  # :show_accounts
   #
   input_data = {
     base_url: "https://api-sandbox.sebgroup.com",
@@ -33,21 +33,33 @@ begin
   puts "Workflow show_accounts completed."
   puts "Final Result:"
   pp JSON.pretty_generate(result)
+  #
+  # :show_account
+  #
   puts "Running workflow show_account..."
   result = Navesti.run(:show_account, final_data)
   puts "Workflow show_account completed."
   puts "Final Result:"
   pp JSON.pretty_generate(result)
+  #
+  # :show_account_balances
+  #
   puts "Running workflow show_account_balances..."
   result = Navesti.run(:show_account_balances, final_data)
   puts "Workflow show_account_balances completed."
   puts "Final Result:"
   pp JSON.pretty_generate(result)
+  #
+  # :show_account_transactions
+  #
   puts "Running workflow show_account_transactions..."
   result = Navesti.run(:show_account_transactions, final_data)
   puts "Workflow show_account_transactions completed."
   puts "Final Result:"
   pp JSON.pretty_generate(result)
+  #
+  # :show_account_transactions_details
+  #
   puts "Running workflow show_account_transactions_details..."
   result = Navesti.run(:show_account_transactions_details, final_data)
   puts "Workflow show_account_transactions_details completed."

@@ -523,6 +523,10 @@ module Navesti
       get(data[:url], data[:headers], fmt)
     end
 
+    def self.initiate_payment(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], fmt)
+    end
+
     def self.show_payment_details(data, fmt = :json)
       get(data[:url], data[:headers], fmt)
     end
@@ -549,6 +553,14 @@ module Navesti
 
     def self.retrieve_an_access_token_with_a_refresh_token(data, fmt = :json)
       post(data[:url], data[:payload], data[:headers], fmt)
+    end
+
+    def self.get_templates(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
+    def self.get_template(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
     end
 
     ###########################################################################
