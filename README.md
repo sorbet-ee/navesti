@@ -1,0 +1,10 @@
+# to run the flow in terminal
+- ruby boc_ais_flow_example.rb
+- ruby boc_pis_flow_example.rb
+
+
+# Workflows
+- show_accounts
+- show_account
+- show_account_balances
+- show_account_transactions
