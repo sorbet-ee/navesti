@@ -1,6 +1,14 @@
 require_relative 'navesti'
 require 'pp'
 
+module BocFlow
+
+  # Registers all Bank of Cyprus AIS workflows with Navesti.
+  # Each workflow is defined using Navesti's declarative DSL so it can be
+  # reused independently from other banks.
+  def self.register
+
+
 Navesti.define :show_accounts do
     format :json
 
@@ -258,4 +266,9 @@ Navesti.define :show_account_transactions do
         end
     end
 end
+
+  end
+end
+
+BocFlow.register
     
