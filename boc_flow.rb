@@ -258,4 +258,137 @@ Navesti.define :show_account_transactions do
         end
     end
 end
+
+Navesti.define :payment_initiation do
+    format :json
+
+    source :payment_initiation_parameters do
+    end
+    
+    workflow do
+        step "Running the :show_account workflow in :payment_initiation" do |data|
+            account_response = Navesti.run(:show_account, data)
+            data.merge!(account_response: account_response)
+            pp "Step 1: Running the :show_account workflow in :payment_initiation executed"
+            pp data[:account_response]
+            data
+        end
+        
+        step "Sign request in :payment_initiation" do |data|
+            data[:headers] = {
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                'tppId' => 'singpaymentdata'
+            }
+            data[:payload] = {
+                "debtor": {
+                    "bankId": "",
+                    "accountId": "351012345671"
+                },
+                "creditor": {
+                    "bankId": "CITIUS33",
+                    "accountId": "48193222324233"
+                },
+                "transactionAmount": {
+                    "amount": 30,
+                    "currency": "EUR"
+                },
+                "paymentDetails": "SWIFT Transfer"
+            }
+            data[:url] = "https://sandbox-apis.bankofcyprus.com/df-boc-org-sb/sb/jwssignverifyapi/sign"
+            sign_request_response = Navesti::ExternalServices.sign_request(data)
+            data.merge!(sign_request_response: sign_request_response)
+            pp "Step 2: Sign request in :payment_initiation executed"
+            pp data[:sign_request_response]
+            data
+        end
+
+        step "Payment initiation in :payment_initiation" do |data|
+            data[:payload] = data[:sign_request_response]
+            data[:headers] = {
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "Authorization" => "Bearer #{data[:first_access_token_response]["access_token"]}",
+                "timeStamp" => Time.now.utc.iso8601,
+                "journeyId" => SecureRandom.uuid,
+                "subscriptionId" => data[:patch_subscriptions_response]["subscriptionId"],
+                "customerIP" => "127.0.0.1",
+                "customerSessionId" => "5533484915359744",
+                "loginTimeStamp" => "484923761",
+                'customerDevice' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:138.0) Gecko/20100101 Firefox/138.0'
+            }
+            data[:url] = data[:base_url] + "/v1/payments/initiate"
+            payment_initiation_response = Navesti::ExternalServices.initiate_payment(data)
+            data.merge!(payment_initiation_response: payment_initiation_response)
+            pp "Step 3: Payment initiation in :payment_initiation executed"
+            pp data[:payment_initiation_response]
+            data
+        end
+
+        step "Review payment in :payment_initiation" do |data|
+            data[:url] = "#{data[:base_url]}/oauth2/authorize?response_type=#{data[:response_type]}&redirect_uri=#{data[:redirect_uri]}&scope=#{data[:scope]}&client_id=#{data[:client_id]}&paymentid=#{data[:payment_initiation_response]["payment"]["paymentId"]}"
+            pp data[:url]
+            # Open the URL in the default web browser
+            puts "Awaiting Authorization-COPY PASTE THE URL"
+            system("xdg-open '#{data[:url]}'") if RUBY_PLATFORM.include?("linux")  # Linux
+            system("open '#{data[:url]}'") if RUBY_PLATFORM.include?("darwin")  # Mac
+            system("start #{data[:url]}") if RUBY_PLATFORM.include?("mswin|mingw")  # Windows
+            # Step 3: Pause execution and wait for user input
+            redirected_url = $stdin.gets.chomp.strip  # Ensures input is read properly
+            # Step 4: Extract authorization code from the redirected URL
+            parsed_params = CGI.parse(URI.parse(redirected_url).query)
+            auth_data = {
+                code: parsed_params["code"]&.first
+            }
+            data.merge!(auth_data: auth_data)
+            pp "Step 4: Select accounts for subscription id and get authorization code in :show_accounts executed"
+            pp data[:auth_data]
+            data
+        end
+
+        step "Get access token in :payment_initiation" do |data|
+            data[:grant_type] = "authorization_code"
+            data[:payload] = {
+                "client_id" => data[:client_id],
+                "client_secret" => data[:client_secret],
+                "scope" => data[:scope],
+                "grant_type" => data[:grant_type],
+                "code" => data[:auth_data][:code]
+            }
+            data[:headers] = {
+                "Content-Type" => "application/x-www-form-urlencoded",
+                "Accept" => "application/json"
+            }
+            data[:url] = "#{data[:base_url]}/oauth2/token"
+            if data[:headers]["Content-Type"] == "application/x-www-form-urlencoded"
+                second_access_token_response = Navesti::ExternalServices.get_access_token(data, nil)
+            else
+                second_access_token_response = Navesti::ExternalServices.get_access_token(data)
+            end
+            data.merge!(second_access_token_response: second_access_token_response)
+            pp "Step 5: Get access token in :payment_initiation executed"
+            pp data[:second_access_token_response]
+            pp data
+        end
+
+        step "Payment initiation in :payment_initiation" do |data|
+            data[:headers] = {
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "Authorization" => "Bearer #{data[:second_access_token_response]["access_token"]}",
+                "timeStamp" => Time.now.utc.iso8601,
+                "journeyId" => SecureRandom.uuid    
+            }
+            data[:url] = data[:base_url] + "/v1/payments/#{data[:payment_initiation_response]["payment"]["paymentId"]}/execute"
+            data[:payload] = {}
+            payment_initiation_response = Navesti::ExternalServices.initiate_payment(data)
+            data.merge!(payment_initiation_response: payment_initiation_response)
+            pp "Step 6: Payment initiation in :payment_initiation executed"
+            pp data[:payment_initiation_response]
+            data[:payment_initiation_response]
+        end
+    end
+
+end
+    
     

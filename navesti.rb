@@ -589,6 +589,10 @@ module Navesti
       patch(data[:url], data[:payload], data[:headers], fmt)
     end
 
+    def self.sign_request(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], fmt)
+    end
+
     ###########################################################################
     #
     # => Method: log_error
