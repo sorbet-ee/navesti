@@ -20,9 +20,9 @@ begin
         response_type: "code",
         redirect_uri: "https://developer.nbg.gr/oauth2/redoc-callback"
     }
-    show_accounts_response = Navesti.run(:show_accounts, input_data)
-    pp "Show Accounts Response:"
-    pp show_accounts_response
+    show_balances_response = Navesti.run(:show_balances, input_data)
+    pp "Show Balances Response:"
+    pp show_balances_response
 rescue => e
     puts "An error occurred during workflow execution:"
     puts e.message

@@ -4,3 +4,6 @@
 
 # Workflows
 - show_accounts
+- show_account
+- show_transactions
+- show_balances

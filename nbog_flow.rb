@@ -157,8 +157,96 @@ Navesti.define :show_accounts do
         )
         accounts_response = Navesti::ExternalServices.show_accounts(data)
         data.merge!(accounts_response: accounts_response)
-        pp "Step 6: Show accounts executed"
+        pp "Step 1: Show accounts executed"
         pp data[:accounts_response]
         data[:accounts_response]
     end
 end
+
+Navesti.define :show_account do
+    format :json
+
+    source :show_account_parameters do
+    end
+    
+    workflow do
+        step "Show account" do |data|
+            data[:accounts_response] = Navesti.run(:show_accounts, data)
+            data[:url] = "#{data[:base_accounts_url]}/accounts/#{data[:accounts_response]["accounts"][0]["resourceId"]}"
+            data[:headers].merge!(
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "Client-Id" => data[:client_id],
+                "Authorization" => "Bearer #{data[:access_token_response]["access_token"]}",
+                "X-Request-Id" => SecureRandom.uuid,
+                "sandbox-id" => data[:sandbox_id],
+                "psu-ip-address" => data[:psu_ip_address],
+                "consent-id" => data[:consent_status_response]["consentId"]
+            )
+            account_response = Navesti::ExternalServices.show_account(data)
+            data.merge!(account_response: account_response)
+            pp "Step 7: Show account executed"
+            pp data[:account_response]
+            data[:account_response]
+        end
+    end
+end
+
+Navesti.define :show_transactions do
+    format :json
+
+    source :show_transactions_parameters do
+    end
+    
+    workflow do
+        step "Show account transactions" do |data|
+            data[:account_response] = Navesti.run(:show_account, data)
+            data[:url] = "#{data[:base_accounts_url]}/accounts/#{data[:account_response]["account"]["resourceId"]}/transactions?bookingStatus=booked"
+            data[:headers].merge!(
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "Client-Id" => data[:client_id],
+                "Authorization" => "Bearer #{data[:access_token_response]["access_token"]}",
+                "X-Request-Id" => SecureRandom.uuid,
+                "sandbox-id" => data[:sandbox_id],
+                "psu-ip-address" => data[:psu_ip_address],
+                "consent-id" => data[:consent_status_response]["consentId"]
+            )
+            transactions_response = Navesti::ExternalServices.show_account_transactions(data)
+            data.merge!(transactions_response: transactions_response)
+            pp "Step 1: Show transactions executed"
+            pp data[:transactions_response]
+            data[:transactions_response]
+        end
+    end
+end
+
+Navesti.define :show_balances do
+    format :json
+
+    source :show_balances_parameters do
+    end
+
+    workflow do
+        step "Show account balances" do |data|
+            data[:account_response] = Navesti.run(:show_account, data)
+            data[:url] = "#{data[:base_accounts_url]}/accounts/#{data[:account_response]["account"]["resourceId"]}/balances"
+            data[:headers].merge!(
+                "Content-Type" => "application/json",
+                "Accept" => "application/json",
+                "Client-Id" => data[:client_id],
+                "Authorization" => "Bearer #{data[:access_token_response]["access_token"]}",
+                "X-Request-Id" => SecureRandom.uuid,
+                "sandbox-id" => data[:sandbox_id],
+                "psu-ip-address" => data[:psu_ip_address],
+                "consent-id" => data[:consent_status_response]["consentId"]
+            )
+            balances_response = Navesti::ExternalServices.show_account_balances(data)
+            data.merge!(balances_response: balances_response)
+            pp "Step 1: Show balances executed"
+            pp data[:balances_response]
+            data[:balances_response]
+        end
+    end
+end
+
