@@ -5,10 +5,11 @@ require 'json'
 require_relative 'navesti'
 require_relative 'nbog_flow'
 
-puts "Starting the NBOG Open Banking AIS workflow..."
+puts "Starting the NBOG Open Banking PIS workflow..."
+
 begin
     #
-    # :show_accounts
+    # :payment_initiation
     #
     input_data = {
         base_accounts_url: "https://apis.nbg.gr/sandbox/bg.openbanking.accounts/oauth2/v1",
@@ -21,9 +22,9 @@ begin
         redirect_uri: "https://developer.nbg.gr/oauth2/redoc-callback",
         psu_ip_address: "127.0.0.1"
     }
-    show_balances_response = Navesti.run(:show_balances, input_data)
-    pp "Show Balances Response:"
-    pp show_balances_response
+    payment_initiation_response = Navesti.run(:payment_initiation, input_data)
+    pp "Payment Initiation Response:"
+    pp payment_initiation_response
 rescue => e
     puts "An error occurred during workflow execution:"
     puts e.message

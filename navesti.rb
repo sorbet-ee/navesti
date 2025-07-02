@@ -603,6 +603,10 @@ module Navesti
       post(data[:url], data[:payload], data[:headers], fmt)
     end
 
+    def self.get_sandbox(data, fmt = :json)
+      get(data[:url], data[:headers], fmt)
+    end
+
     ###########################################################################
     #
     # => Method: log_error
