@@ -612,6 +612,18 @@ module Navesti
       post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
     end
 
+    def self.create_order(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
+    end
+
+    def self.confirm_payment_source(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
+    end
+
+    def self.capture_authorization(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
+    end
+
     ###########################################################################
     #
     # => Method: log_error
