@@ -2,7 +2,7 @@ require_relative 'navesti'
 require 'pp'
 require 'json'
 
-Navesti.define :show_account do
+Navesti.define :show_accounts do
     format :json
     source :show_account_parameters do
     end
@@ -188,5 +188,46 @@ Navesti.define :show_account do
             data[:accounts_response]
         end
     end
+end
 
+Navesti.define :show_account do
+    format :json
+    source :show_account_parameters do
+    end
+    workflow do
+        step "Show account" do |data|
+            pp "Step 1: Show account started..."
+            data[:accounts_response] = Navesti.run(:show_accounts, data)
+            data[:url] = "#{data[:base_url]}/accounts/#{data[:accounts_response]["accounts"][0]["resourceId"]}"
+            data[:headers].merge!(
+                "X-Request-ID" => SecureRandom.uuid
+            )
+            account_response = Navesti::ExternalServices.show_account(data)
+            data.merge!(account_response: account_response)
+            pp "Step 1: Show account executed"
+            pp data[:account_response]
+            data[:account_response]
+        end
+    end
+end
+
+Navesti.define :show_balances do
+    format :json
+    source :show_balances_parameters do
+    end
+    workflow do
+        step "Show balances" do |data|
+            pp "Step 1: Show balances started..."
+            data[:account_response] = Navesti.run(:show_account, data)
+            data[:url] = "#{data[:base_url]}/accounts/#{data[:accounts_response]["accounts"][0]["resourceId"]}/balances"
+            data[:headers].merge!(
+                "X-Request-ID" => SecureRandom.uuid
+            )
+            balances_response = Navesti::ExternalServices.show_account_balances(data)
+            data.merge!(balances_response: balances_response)
+            pp "Step 1: Show balances executed"
+            pp data[:balances_response]
+            data[:balances_response]
+        end
+    end
 end

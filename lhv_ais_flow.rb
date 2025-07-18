@@ -5,7 +5,7 @@ require_relative 'lhv_flow'
 puts "Starting the LHV Open Banking AIS workflow..."
 begin
     #
-    # :show_account
+    # :show_balances
     #
     input_data = {
         base_url: 'https://api.sandbox.lhv.eu/psd2/v1',
@@ -25,9 +25,9 @@ begin
             version: 'TLSv1_2'
         }
     }
-    show_account_response = Navesti.run(:show_account, input_data)
-    pp "Show Account Response:"
-    pp show_account_response
+    show_balances_response = Navesti.run(:show_balances, input_data)
+    pp "Show Balances Response:"
+    pp show_balances_response
 rescue => e
     puts "An error occurred during workflow execution:"
     puts e.message
