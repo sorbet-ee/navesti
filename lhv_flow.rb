@@ -231,3 +231,24 @@ Navesti.define :show_balances do
         end
     end
 end
+
+Navesti.define :show_transactions do
+    format :json
+    source :show_transactions_parameters do
+    end
+    workflow do
+        step "Show transactions" do |data|
+            pp "Step 1: Show transactions started..."
+            data[:account_response] = Navesti.run(:show_account, data)
+            data[:url] = "#{data[:base_url]}/accounts/#{data[:accounts_response]["accounts"][0]["resourceId"]}/transactions?dateFrom=#{data[:date_from]}&dateTo=#{data[:date_to]}&bookingStatus=#{data[:booking_status]}"
+            data[:headers].merge!(
+                "X-Request-ID" => SecureRandom.uuid
+            )
+            transactions_response = Navesti::ExternalServices.show_account_transactions(data)
+            data.merge!(transactions_response: transactions_response)
+            pp "Step 1: Show transactions executed"
+            pp data[:transactions_response]
+            data[:transactions_response]
+        end
+    end
+end

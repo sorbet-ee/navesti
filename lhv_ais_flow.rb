@@ -5,7 +5,7 @@ require_relative 'lhv_flow'
 puts "Starting the LHV Open Banking AIS workflow..."
 begin
     #
-    # :show_balances
+    # :show_transactions, (:show_account, :show_accounts, :show_balances works fine)
     #
     input_data = {
         base_url: 'https://api.sandbox.lhv.eu/psd2/v1',
@@ -23,11 +23,14 @@ begin
             ca_file: File.expand_path('config/ca-chain.pem'),
             verify: false,
             version: 'TLSv1_2'
-        }
+        },
+        date_from: Date.today.prev_month.strftime("%Y-%m-%d"),
+        date_to: Date.today.strftime("%Y-%m-%d"),
+        booking_status: 'booked'
     }
-    show_balances_response = Navesti.run(:show_balances, input_data)
-    pp "Show Balances Response:"
-    pp show_balances_response
+    show_transactions_response = Navesti.run(:show_transactions, input_data)
+    pp "Show Transactions Response:"
+    pp show_transactions_response
 rescue => e
     puts "An error occurred during workflow execution:"
     puts e.message
