@@ -72,7 +72,6 @@ Navesti.define :show_account do
         step "Create consent" do |data|
             pp "Step 4: Create consent started..."
             data[:url] = "#{data[:base_url]}/consents"
-            pp data[:url]
             data[:headers] = {
                 'Accept' => 'application/hal+json;charset=UTF-8',
                 'PSU-ID' => data[:psu_id],
@@ -98,8 +97,96 @@ Navesti.define :show_account do
             consent_response = Navesti::ExternalServices.create_consent(data)
             data.merge!(consent_response: consent_response)
             pp "Step 4: Create consent executed"
-            pp data[:consent_response]
             data
         end
+
+        step "Start decoupled consent signing" do |data|
+            pp "Step 5: Start decoupled consent signing started..."
+            data[:url] = "#{data[:base_url]}/consents/#{data[:consent_response]['consentId']}/authorisations"
+            data[:headers] = {
+                'Accept' => 'application/hal+json;charset=UTF-8',
+                'PSU-ID' => data[:psu_id],
+                'PSU-Corporate-ID' => data[:psu_corporate_id],
+                'X-Request-ID' => SecureRandom.uuid,
+                'Content-Type' => 'application/json;charset=UTF-8',
+                'Authorization' => "Bearer #{data[:access_token_response]['access_token']}",
+                'PSU-IP-Address' => data[:psu_ip_address],
+                'TPP-Redirect-URI' => data[:tpp_redirect_uri],
+                'TPP-Redirect-Preferred' =>  data[:tpp_redirect_preferred]
+            }
+            data[:payload] = {
+                "authenticationMethodId" => data[:authentication_method_id]
+            }
+            consent_signing_response = Navesti::ExternalServices.initiate_authorization(data)
+            data.merge!(consent_signing_response: consent_signing_response)
+            pp "Step 5: Start decoupled consent signing executed"
+            data
+        end
+
+        step "Get sca status for consent signing" do |data|
+            pp "Step 6: Get sca status for consent signing started..."
+            data[:url] = "#{data[:base_url]}/consents/#{data[:consent_response]['consentId']}/authorisations/#{data[:consent_signing_response]['authorisationId']}"
+            data[:headers] = {
+                'Accept' => 'application/hal+json;charset=UTF-8',
+                'PSU-ID' => data[:psu_id],
+                'PSU-Corporate-ID' => data[:psu_corporate_id],
+                'X-Request-ID' => SecureRandom.uuid,
+                'Content-Type' => 'application/json;charset=UTF-8',
+                'Authorization' => "Bearer #{data[:access_token_response]['access_token']}",
+                'PSU-IP-Address' => data[:psu_ip_address],
+                'TPP-Redirect-URI' => data[:tpp_redirect_uri],
+                'TPP-Redirect-Preferred' =>  data[:tpp_redirect_preferred]
+            }
+            sleep 10
+            authorization_status_response = Navesti::ExternalServices.get_sca_status(data)
+            data.merge!(authorization_status_response: authorization_status_response)
+            pp "Step 6: Get sca status for consent signing executed"
+            pp data[:authorization_status_response]
+            data
+        end
+
+        step "Get consent details" do |data|
+            pp "Step 7: Get consent details started..."
+            data[:url] = "#{data[:base_url]}/consents/#{data[:consent_response]['consentId']}"
+            data[:headers] = {
+                'Accept' => 'application/hal+json;charset=UTF-8',
+                'PSU-ID' => data[:psu_id],
+                'PSU-Corporate-ID' => data[:psu_corporate_id],
+                'X-Request-ID' => SecureRandom.uuid,
+                'Content-Type' => 'application/json;charset=UTF-8',
+                'Authorization' => "Bearer #{data[:access_token_response]['access_token']}",
+                'PSU-IP-Address' => data[:psu_ip_address],
+                'TPP-Redirect-URI' => data[:tpp_redirect_uri],
+                'TPP-Redirect-Preferred' =>  data[:tpp_redirect_preferred]
+            }
+            consent_details_response = Navesti::ExternalServices.get_consent_details(data)
+            data.merge!(consent_details_response: consent_details_response)
+            pp "Step 7: Get consent details executed"
+            pp data[:consent_details_response]
+            data
+        end
+
+        step "Show accounts" do |data|
+            pp "Step 8: Show accounts started..."
+            data[:url] = "#{data[:base_url]}/accounts"
+            data[:headers] = {
+                'Accept' => 'application/hal+json;charset=UTF-8',
+                'PSU-ID' => data[:psu_id],
+                'PSU-Corporate-ID' => data[:psu_corporate_id],
+                'X-Request-ID' => SecureRandom.uuid,
+                'Content-Type' => 'application/json;charset=UTF-8',
+                'Authorization' => "Bearer #{data[:access_token_response]['access_token']}",
+                'PSU-IP-Address' => data[:psu_ip_address],
+                'TPP-Redirect-URI' => data[:tpp_redirect_uri],
+                'TPP-Redirect-Preferred' =>  data[:tpp_redirect_preferred],
+                'Consent-Id' => data[:consent_response]['consentId']
+            }
+            accounts_response = Navesti::ExternalServices.show_accounts(data)
+            data.merge!(accounts_response: accounts_response)
+            pp "Step 8: Show accounts executed"
+            pp data[:accounts_response]
+            data[:accounts_response]
+        end
     end
+
 end
