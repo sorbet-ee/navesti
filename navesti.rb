@@ -624,6 +624,11 @@ module Navesti
       post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
     end
 
+    ## LHV specific defs ##
+    def self.start_decoupled_payment_signing(data, fmt = :json)
+      post(data[:url], data[:payload], data[:headers], data[:ssl_options], fmt)
+    end
+
     ###########################################################################
     #
     # => Method: log_error
