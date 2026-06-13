@@ -1,0 +1,6 @@
+{
+  "access": "ENABLED",
+  "tppId": "PSDEE-FI-10539549",
+  "name": "AS LHV Pank",
+  "roles": ["AIS", "PIS", "PIIS"]
+}

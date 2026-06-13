@@ -1,0 +1,9 @@
+{
+  "tppMessages": [
+    {
+      "category": "ERROR",
+      "code": "ROLE_INVALID",
+      "text": "PSU-Corporate-ID does not match the expected customer registry code or number."
+    }
+  ]
+}
