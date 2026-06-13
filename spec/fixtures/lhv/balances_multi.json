@@ -1,0 +1,25 @@
+{
+  "account": { "iban": "EE717700771001735865" },
+  "balances": [
+    {
+      "balanceAmount": { "currency": "EUR", "amount": "123.50" },
+      "balanceType": "interimAvailable",
+      "referenceDate": "2026-06-14"
+    },
+    {
+      "balanceAmount": { "currency": "EUR", "amount": "120.00" },
+      "balanceType": "closingBooked",
+      "referenceDate": "2026-06-14"
+    },
+    {
+      "balanceAmount": { "currency": "GBP", "amount": "50.00" },
+      "balanceType": "interimAvailable",
+      "referenceDate": "2026-06-14"
+    },
+    {
+      "balanceAmount": { "currency": "GBP", "amount": "49.10" },
+      "balanceType": "interimBooked",
+      "referenceDate": "2026-06-14"
+    }
+  ]
+}

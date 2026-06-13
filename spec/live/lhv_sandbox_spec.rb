@@ -29,6 +29,23 @@ RSpec.describe "LHV sandbox (live)", :live do
     expect(accounts.first.provider_reported_currency).to be_a(String).or be_nil
   end
 
+  it "reads balances for a returned account (consent-gated; skips if not permitted)" do
+    accounts = adapter.accounts_list(access_token: "Liis-MariMnnik")
+    account = accounts.first
+
+    begin
+      balances = adapter.balances(access_token: "Liis-MariMnnik", account_id: account.provider_account_id)
+    rescue Navesti::ConsentError, Navesti::ProviderError => e
+      skip "balances need an AIS consent the sandbox token lacks: #{e.message}"
+    end
+
+    expect(balances).to be_an(Array)
+    balances.each do |bal|
+      expect(bal.currency).to match(/\A[A-Z]{3}\z/) # real currency, not "XXX"
+      expect(bal.available_amount_minor || bal.booked_amount_minor).to be_a(Integer)
+    end
+  end
+
   it "initiates a SEPA payment between the customer's own accounts (ACSC exemption)" do
     order = Navesti::PaymentOrder.new(
       money: Navesti::Money.new(amount_minor: 1_00, currency: "EUR"),

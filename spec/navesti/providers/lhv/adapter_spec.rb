@@ -254,6 +254,116 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
     end
   end
 
+  # --- AIS balances (LHV-2A) ---
+
+  describe "#balances" do
+    it "maps available and booked amounts to minor units" do
+      a, http = adapter(Fixtures.lhv_response("balances_eur"))
+      balances = a.balances(access_token: "tok", account_id: "acc-1")
+
+      expect(balances.size).to eq(1)
+      bal = balances.first
+      expect(bal).to be_a(Navesti::Balance)
+      expect(bal.currency).to eq("EUR")
+      expect(bal.available_amount_minor).to eq(12_350)
+      expect(bal.booked_amount_minor).to eq(12_000)
+      expect(bal.provider_account_id).to eq("acc-1")
+      expect(http.last_request[:url]).to include("/v1/accounts/acc-1/balances")
+    end
+
+    it "preserves all raw balance entries" do
+      a, = adapter(Fixtures.lhv_response("balances_eur"))
+      bal = a.balances(access_token: "tok", account_id: "acc-1").first
+      types = bal.raw[:entries].map { |e| e["balanceType"] }
+      expect(types).to contain_exactly("interimAvailable", "interimBooked")
+    end
+
+    it "returns one Balance per currency for multi-currency accounts" do
+      a, = adapter(Fixtures.lhv_response("balances_multi"))
+      balances = a.balances(access_token: "tok", account_id: "acc-1")
+
+      by_currency = balances.to_h { |b| [b.currency, b] }
+      expect(by_currency.keys).to contain_exactly("EUR", "GBP")
+      expect(by_currency["EUR"].available_amount_minor).to eq(12_350)
+      expect(by_currency["EUR"].booked_amount_minor).to eq(12_000)
+      expect(by_currency["GBP"].available_amount_minor).to eq(5_000)
+      expect(by_currency["GBP"].booked_amount_minor).to eq(4_910)
+    end
+
+    it "returns nil booked (never invents a value) when only available is present" do
+      a, = adapter(Fixtures.lhv_response("balances_available_only"))
+      bal = a.balances(access_token: "tok", account_id: "acc-1").first
+      expect(bal.available_amount_minor).to eq(7_500)
+      expect(bal.booked_amount_minor).to be_nil
+    end
+
+    it "returns nil available (never invents a value) when only booked is present" do
+      a, = adapter(Fixtures.lhv_response("balances_booked_only"))
+      bal = a.balances(access_token: "tok", account_id: "acc-1").first
+      expect(bal.booked_amount_minor).to eq(20_000)
+      expect(bal.available_amount_minor).to be_nil
+    end
+
+    it "sends Consent-ID and PSU-Corporate-ID headers when provided" do
+      a, http = adapter(Fixtures.lhv_response("balances_eur"))
+      a.balances(access_token: "tok", account_id: "acc-1",
+                 consent_id: "consent-123", psu_corporate_id: "EE47101010033")
+      req = http.last_request
+      expect(req[:headers]["Consent-ID"]).to eq("consent-123")
+      expect(req[:headers]["PSU-Corporate-ID"]).to eq("EE47101010033")
+    end
+
+    it "follows the bank's own balances href when given (no path hardcoding)" do
+      a, http = adapter(Fixtures.lhv_response("balances_eur"))
+      a.balances(access_token: "tok", account_id: "acc-1",
+                 balances_href: "/v1/accounts/acc-1/balances")
+      expect(http.last_request[:url]).to eq("https://api.sandbox.lhv.eu/psd2/v1/accounts/acc-1/balances")
+    end
+
+    it "raises ConsentError on 401" do
+      a, = adapter(FakeHTTPClient.json_response(status: 401, body: {}))
+      expect { a.balances(access_token: "expired", account_id: "acc-1") }
+        .to raise_error(Navesti::ConsentError)
+    end
+  end
+
+  # --- OAuth token refresh (LHV-2A) ---
+
+  describe "#refresh_token" do
+    it "builds a refresh_token form request" do
+      a, http = adapter(Fixtures.lhv_response("token_refreshed"))
+      a.refresh_token(refresh_token: "test-refresh-token-BBBB")
+
+      req = http.last_request
+      expect(req[:url]).to eq("https://api.sandbox.lhv.eu/psd2/oauth/token")
+      expect(req[:headers]["Content-Type"]).to eq("application/x-www-form-urlencoded")
+      expect(req[:body]).to include("grant_type=refresh_token")
+      expect(req[:body]).to include("refresh_token=test-refresh-token-BBBB")
+      expect(req[:body]).to include("client_id=PSDEE-LHVTEST-e37b7b")
+      expect(req[:body]).not_to include("redirect_uri") # not sent on refresh
+    end
+
+    it "returns an OAuthTokenSet with the fresh access token" do
+      a, = adapter(Fixtures.lhv_response("token_refreshed"))
+      token = a.refresh_token(refresh_token: "test-refresh-token-BBBB")
+      expect(token).to be_a(Navesti::OAuthTokenSet)
+      expect(token.access_token).to eq("test-access-token-REFRESHED")
+    end
+
+    it "redacts refresh_token material from error output" do
+      err = Navesti::Error.new("refresh failed for refresh_token=super-secret-rt")
+      expect(err.message).not_to include("super-secret-rt")
+      expect(err.message).to include("[REDACTED]")
+    end
+
+    it "raises a ProviderError on an invalid_grant response" do
+      resp = FakeHTTPClient.json_response(status: 400, body: { "error" => "invalid_grant" })
+      a, = adapter(resp)
+      expect { a.refresh_token(refresh_token: "expired-rt") }
+        .to raise_error(Navesti::ProviderError, /invalid_grant/)
+    end
+  end
+
   # --- transport error propagation ---
 
   describe "transport failures" do

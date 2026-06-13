@@ -38,6 +38,12 @@ module Navesti
           "BLOCKED" => :blocked
         }.freeze
 
+        # Berlin Group balanceType values, classified into the two facts the
+        # BalanceProvider port carries. All raw entries are preserved on the
+        # Balance regardless; this only decides which becomes available/booked.
+        AVAILABLE_BALANCE_TYPES = %w[interimAvailable forwardAvailable expected authorised].freeze
+        BOOKED_BALANCE_TYPES    = %w[closingBooked interimBooked openingBooked].freeze
+
         module_function
 
         # Normalizes an LHV transactionStatus into a PaymentStatus, preserving
@@ -62,6 +68,14 @@ module Navesti
 
         def access(access_string)
           ACCESS.fetch(access_string.to_s, :unknown)
+        end
+
+        def available_balance_type?(type)
+          AVAILABLE_BALANCE_TYPES.include?(type.to_s)
+        end
+
+        def booked_balance_type?(type)
+          BOOKED_BALANCE_TYPES.include?(type.to_s)
         end
       end
     end

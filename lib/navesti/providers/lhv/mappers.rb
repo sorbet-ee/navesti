@@ -67,6 +67,35 @@ module Navesti
           end
         end
 
+        # GET /v1/accounts/{id}/balances → [Navesti::Balance], one per currency.
+        #
+        # Berlin Group returns an array of typed balance entries; we group by
+        # currency and project the available/booked facts (Dialect classifies
+        # the balanceType). Every raw entry is preserved. A missing available or
+        # booked balance is nil — never invented (docs/08, GPT LHV-2A).
+        def balances(response, provider_account_id:)
+          body = response.json
+          reject_on_error!(body)
+          entries = body.is_a?(Hash) ? (body["balances"] || []) : []
+          captured_at = Time.now.utc.iso8601
+
+          entries.group_by { |e| e.dig("balanceAmount", "currency") }.map do |currency, group|
+            available = pick_balance(group, currency) { |t| Dialect.available_balance_type?(t) }
+            booked    = pick_balance(group, currency) { |t| Dialect.booked_balance_type?(t) }
+
+            Balance.new(
+              provider: Config::PROVIDER,
+              provider_account_id: provider_account_id,
+              currency: currency,
+              available: available,
+              booked: booked,
+              captured_at: captured_at,
+              # Preserve all raw entries for this currency, plus full evidence.
+              raw: { entries: group, response: evidence(response) }
+            )
+          end
+        end
+
         # POST /oauth/token → Navesti::Token
         def token(response)
           body = response.json
@@ -120,6 +149,18 @@ module Navesti
         end
 
         # --- helpers ---
+
+        # Picks the first balance entry of a matching type and converts its
+        # amount to Money. Returns nil when no entry of that class is present.
+        def pick_balance(group, currency)
+          entry = group.find { |e| yield(e["balanceType"]) }
+          return nil if entry.nil?
+
+          amount = entry.dig("balanceAmount", "amount")
+          return nil if amount.nil?
+
+          Money.from_decimal(amount, currency)
+        end
 
         def payment_reference(payment_id)
           return nil if payment_id.to_s.empty?

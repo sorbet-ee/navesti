@@ -31,13 +31,13 @@ Conventions used below: *Raw evidence?* = does the object carry a `raw` field. *
 
 ## Navesti::Balance
 
-- **Purpose:** a balance snapshot at a moment in time.
-- **Required:** `account_ref`, `currency` (ISO-4217 — this is where real currency lives), `available` (Money), `booked` (Money), `captured_at` (UTC).
-- **Optional:** `credit_limit` (Money), `balance_type` (bank's own type label).
-- **Raw evidence?** Yes.
-- **Maps to Sorbet-Core?** AIS BalanceProvider port output.
-- **Note:** Balance is the money-evidence object; Account is only a container (see Account, above). A multi-currency LHV account yields several Balances, one per currency.
-- **Open questions:** some banks return only one balance type — is `booked` required or do we allow `available`-only with explicit absence? Proposed: both fields present, value may be `nil` with `raw` showing why; conformance suite has a "missing balance field" case.
+- **Purpose:** a balance snapshot for one currency at a moment in time (implemented in LHV-2A).
+- **Required:** `provider`, `provider_account_id`, `currency` (real ISO-4217 — **rejects the `"XXX"` container sentinel**), and **at least one** of `available` / `booked`.
+- **Optional:** `available` (Money), `booked` (Money) — either may be nil when the bank omits that balance type; `captured_at` (UTC — when Navesti captured it, not the bank's book date); `raw`.
+- **Accessors:** `available_amount_minor` / `booked_amount_minor` — flat minor-unit delegators matching the BalanceProvider port contract (docs/03); nil when the underlying Money is absent.
+- **Raw evidence?** Yes — preserves *all* raw balance entries for the currency (Berlin Group returns typed entries: `interimAvailable`, `closingBooked`, …) plus the full response.
+- **Maps to Sorbet-Core?** AIS BalanceProvider port output. This is the funding-evidence Sorbet-Core's model depends on — accounts identify containers, balances prove money.
+- **Decided:** a multi-currency LHV account yields several Balances, one per currency; the dialect classifies each Berlin Group `balanceType` into available/booked (Dialect `AVAILABLE_BALANCE_TYPES` / `BOOKED_BALANCE_TYPES`). A missing available or booked balance is `nil` — Navesti never invents a number. **Read Balances is consent-gated** (unlike accounts-list): the host supplies a `Consent-ID`; the consent-creation flow is a later phase.
 
 ## Navesti::Transaction
 

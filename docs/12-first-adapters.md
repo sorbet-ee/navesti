@@ -30,11 +30,11 @@ These spikes de-risk auth flows and endpoint quirks; they are *reference materia
 - **Known quirks:** none; it exists to *generate* the awkward cases deliberately.
 - **Documents needed:** none. **Credentials:** fake by construction.
 
-### 2. LHV — Phase 1 vertical slice (active)
+### 2. LHV — Estonian PSD2 / Berlin Group adapter
 
-Estonian **LHV Pank PSD2 / Berlin Group** interface (`api.lhv.eu/psd2` — *not* the UK LHV Bank Limited / Salt Edge product). One end-to-end journey, smallest slice that proves the architecture. Berlin Group REST/JSON, mTLS/QWAC only (no QSEAL). Details in [providers/lhv/swagger-notes.md](providers/lhv/swagger-notes.md); status dialect in [08-status-normalization.md](08-status-normalization.md).
+Estonian **LHV Pank PSD2 / Berlin Group** interface (`api.lhv.eu/psd2` — *not* the UK LHV Bank Limited / Salt Edge product). Berlin Group REST/JSON, mTLS/QWAC only (no QSEAL). Details in [providers/lhv/swagger-notes.md](providers/lhv/swagger-notes.md); status dialect in [08-status-normalization.md](08-status-normalization.md).
 
-**Included (Phase 1):**
+**Phase 1 — vertical slice (done):**
 
 - TPP verification (`GET /v1/tpp-verification`)
 - OAuth redirect URL builder
@@ -44,29 +44,36 @@ Estonian **LHV Pank PSD2 / Berlin Group** interface (`api.lhv.eu/psd2` — *not*
 - PIS status polling (`GET /v1.1/.../{paymentId}/status`)
 - LHV status dialect (rich label + safety_status + side_effect_possible)
 
-**Excluded (later phases):**
+**Phase LHV-2A — balances + token refresh (done):**
+
+- AIS Read Balances (`GET /v1/accounts/{id}/balances`) → one `Balance` per currency, available/booked in minor units, all raw entries preserved. **Consent-gated** — host supplies `Consent-ID` (header); consent-creation flow deferred. Follows the bank's `_links.balances.href` when given.
+- OAuth token refresh (`POST /oauth/token`, refresh_token grant).
+- Balance value object reshaped to the BalanceProvider-port contract.
+
+**Phase LHV-2B — abandonment handling (next):**
+
+- payment cancellation (`DELETE …/cancel`) — matters because RCVD/RVCD is pre-SCA (`side_effect_possible: false`); if the PSU abandons SCA, Sorbet-Core may cancel the bank-side initiation before retrying elsewhere.
+- token revoke (`POST /oauth/revoke`).
+- decoupled SCA *discovery* (not full execution).
+
+**Excluded (later phases still):**
 
 - XML payments / bulk / international / UK FPS / SWIFT
-- decoupled SCA execution
+- full decoupled SCA execution
 - PIIS (confirmation of funds)
-- payment cancellation
-- balances & transactions endpoints
-- consent lifecycle (long/short-term consents)
-- token refresh / revoke
+- transactions endpoint
+- consent **creation** lifecycle (long/short-term consents)
 - real persistence, Sorbet-Core wrapper, UI
 
 - **Auth flow:** OAuth2 redirect + mTLS (sandbox test certs). For AIS/PIS smoke tests, sandbox ships preset bearer tokens (`Liis-MariMnnik`, `Donaldduck`) so the redirect dance isn't required to exercise the data calls.
 - **Webhook/polling:** polling only.
-- **Known quirks:** multi-currency accounts report `currency: "XXX"`; RCVD/RVCD spelling variance; ACSP can linger.
+- **Known quirks:** multi-currency accounts report `currency: "XXX"`; RCVD/RVCD spelling variance; ACSP can linger; Read Balances needs a consent that accounts-list does not.
 - **Credentials/certificates:** sandbox client cert/key in gitignored `certs/`, referenced by env path (`LHV_CLIENT_CERT_PATH` etc.); TPP id `PSDEE-LHVTEST-e37b7b` (extractable from cert OID 2.5.4.97). The old pair committed in `navesti_lhv` branch history must not be reused. Regenerate the sandbox pair when convenient — it doesn't block implementation.
 
-### 3. LHV — later phases (PIS hardening, AIS depth)
+### 3. Core integration & LHV depth (after LHV-2A)
 
-- **Why:** extend the proven dialect — balances/transactions, consent lifecycle, decoupled SCA, cancellation, token refresh, then XML.
-- **Expected auth flow:** as Phase 1, plus payment SCA depth.
-- **AIS:** already done. **PIS:** SEPA credit transfer (+ instant if sandbox supports).
-- **Webhook/polling:** per sandbox support; polling fallback regardless.
-- **Documents needed:** payment initiation API docs, status code list (ISO 20022 subset).
+- **Core-Navesti integration:** add the gem to Sorbet-Core; back the AIS BalanceProvider port with LHV balances; back the PIS Connectivity port for controlled flows. **Blocker to resolve first:** Sorbet-Core needs an `awaiting_authorization`/`authorization_required` packet state — `requires_authorization` (RCVD + scaRedirect) is a *known user-action* state and must not be conflated with `ambiguous`/`needs_review` (uncertainty). Do not wire LHV redirect PIS into Core until that state model is agreed.
+- **Then:** XML payments, full decoupled SCA, PIIS, transactions, consent creation.
 
 ### 4. Wise (AIS/PIS)
 

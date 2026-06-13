@@ -28,4 +28,9 @@ module Navesti
       raise ValidationError, "Token#access_token must be present" if access_token.to_s.empty?
     end
   end
+
+  # Alias for the OAuth token pair. Same object as Token; named for callers who
+  # think of it as a set (access + refresh).
+  OAuthTokenSet = Token
 end
+

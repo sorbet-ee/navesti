@@ -90,6 +90,44 @@ module Navesti
           Mappers.accounts(response)
         end
 
+        # GET /v1/accounts/{account_id}/balances → [Balance], one per currency.
+        #
+        # Consent-gated AIS service: unlike accounts-list, Read Balances needs a
+        # valid AIS consent. The host supplies `consent_id` (sent as Consent-ID);
+        # the consent-creation flow is a later phase. Pass `balances_href` (e.g.
+        # account._links.balances.href from accounts-list) to follow the bank's
+        # own link instead of the built path.
+        def balances(access_token:, account_id:, balances_href: nil, consent_id: nil, psu_corporate_id: nil)
+          headers = bearer_headers(access_token)
+          headers["Consent-ID"] = consent_id if consent_id
+          headers["PSU-Corporate-ID"] = psu_corporate_id if psu_corporate_id
+
+          url = balances_href ? config.absolute(balances_href) : config.account_balances_url(account_id)
+          response = @http.request(method: :get, url: url, headers: headers, credentials: credentials)
+          guard_response!(response)
+          Mappers.balances(response, provider_account_id: account_id)
+        end
+
+        # POST /oauth/token (refresh_token) — mints a fresh access token from a
+        # refresh token. Stateless: the host owns token lifecycle/storage;
+        # Navesti only performs the exchange and returns the Token (docs/10).
+        def refresh_token(refresh_token:)
+          body = URI.encode_www_form(
+            client_id: client_id,
+            grant_type: "refresh_token",
+            refresh_token: refresh_token
+          )
+          response = @http.request(
+            method: :post,
+            url: config.oauth_token_url,
+            headers: base_headers("Content-Type" => "application/x-www-form-urlencoded"),
+            body: body,
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.token(response)
+        end
+
         # POST /v1.1/payments/sepa-credit-transfers (JSON). Returns a
         # PaymentSubmission: a redirect interaction when SCA is required, or a
         # confirmed status when an SCA exemption applied (no scaRedirect).

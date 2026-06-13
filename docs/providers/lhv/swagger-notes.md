@@ -18,10 +18,13 @@ Version is **per-service**, not a single base segment: OAuth has no version, AIS
 {root}/oauth/authorize | /oauth/token | /oauth/revoke      (no version)
 {root}/v1/tpp-verification
 {root}/v1/accounts-list                                    (no-consent AIS)
+{root}/v1/accounts/{id}/balances                           (consent-gated AIS)
 {root}/v1.1/payments/sepa-credit-transfers (+ /{id}/status)
 ```
 
-## Phase 1 endpoints used
+## Implemented endpoints
+
+Phase 1:
 
 | Purpose | Method & path | Notes |
 |---|---|---|
@@ -32,9 +35,16 @@ Version is **per-service**, not a single base segment: OAuth has no version, AIS
 | PIS SEPA init | `POST /v1.1/payments/sepa-credit-transfers` | `Bearer`; `TPP-Redirect-Preferred`, `TPP-Redirect-URI`, optional `TPP-Nok-Redirect-URI` |
 | PIS status | `GET /v1.1/payments/sepa-credit-transfers/{paymentId}/status` | `Bearer`; returns `transactionStatus` |
 
-## Deferred endpoints (not Phase 1)
+Phase LHV-2A:
 
-XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments, payment cancellation (`DELETE …/cancel`), decoupled SCA (`POST …/authorisations`), consents (`POST /v1/consents`, `…/authorisations`), accounts-with-consent (`POST /v1/accounts`), balances (`/v1/accounts/{id}/balances`), transactions, PIIS (confirmation of funds), token refresh/revoke.
+| Purpose | Method & path | Notes |
+|---|---|---|
+| AIS Read Balances | `GET /v1/accounts/{resourceId}/balances` | **consent-gated**: `Bearer` + `Consent-ID` (host-supplied); optional `PSU-Corporate-ID`. Returns Berlin Group typed `balances[]` (`interimAvailable`, `closingBooked`, …). Prefer the `_links.balances.href` from accounts-list. |
+| OAuth token refresh | `POST /oauth/token` | form-encoded; `client_id`, `grant_type=refresh_token`, `refresh_token` (no `redirect_uri`) |
+
+## Deferred endpoints (LHV-2B and later)
+
+Payment cancellation (`DELETE …/cancel`), token revoke (`POST /oauth/revoke`), decoupled SCA (`POST …/authorisations`), consent **creation** (`POST /v1/consents`, `…/authorisations`), accounts-with-consent (`POST /v1/accounts`), transactions, PIIS (confirmation of funds), XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments.
 
 ## Known discrepancies & findings
 
@@ -44,6 +54,7 @@ XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments, paym
 - **`ACSC` semantics** — source-bank debited and submitted to scheme; final beneficiary settlement is rail-dependent (instant = credited; batch = awaiting clearing). Navesti reports `confirmed`; Sorbet-Core decides settlement meaning.
 - **`ACSP` can linger** — usually → `ACSC` in minutes, but may stay on SEPA-Instant→regular fallback, manual intervention, or compliance. Post-SCA, so `side_effect_possible: true`.
 - **TLS trust anchor** — LHV server cert chains to DigiCert Global Root G2 (as of 30.03.2026); standard CA bundle suffices for server verification. Client mTLS (our QWAC) is separate.
+- **Balances are consent-gated** — unlike `/v1/accounts-list` (no consent), Read Balances is a standard Berlin Group AIS service and requires an AIS consent (`Consent-ID` header). LHV-2A implements the endpoint + normalization and takes a host-supplied `consent_id`; the consent-creation/authorisation flow is deferred. Multiple `balanceType` entries per currency are classified into available/booked and all preserved as raw.
 
 ## Sandbox test data (noted, never hardcoded as secrets)
 

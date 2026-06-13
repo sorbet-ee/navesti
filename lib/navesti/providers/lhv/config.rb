@@ -54,6 +54,21 @@ module Navesti
           "#{root}/v1/accounts-list?#{query}"
         end
 
+        # Read Balances (Berlin Group AIS). Consent-gated — the caller supplies
+        # a Consent-ID. Prefer the href from accounts-list when available; this
+        # builds the canonical path when it is not.
+        def account_balances_url(account_id)
+          "#{root}/v1/accounts/#{account_id}/balances"
+        end
+
+        # Resolves a (possibly relative) HATEOAS href against the root, so links
+        # returned by the bank can be followed without re-hardcoding paths.
+        def absolute(href)
+          return href if href.to_s.start_with?("http")
+
+          "#{root}#{href}"
+        end
+
         # --- PIS JSON (v1.1) ---
 
         def sepa_payment_url
