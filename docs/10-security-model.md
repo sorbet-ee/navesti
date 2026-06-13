@@ -29,6 +29,20 @@ Navesti::Credentials (per dialect/auth profile)
 4. **Test fixture rules:** fixtures use obviously fake values (`client_id: "test-client"`, IBANs from the official test ranges, certificates generated for tests). No copied sandbox credentials — *note: an LHV sandbox client cert/key pair exists in this repo's old `navesti_lhv` branch history; do not carry that pattern forward, and consider purging/rotating it.*
 5. **Raw evidence vs. redaction:** evidence returned to the host is unredacted (the host's persistence is its own trust domain and may include bank-signed payloads needed for audit). Redaction applies to *logs and error surfaces*, which travel further than evidence.
 
+## LHV Phase 1 security surface (decided)
+
+LHV's API uses the eIDAS **QWAC** transport certificate for TPP identification; **QSEAL is not required or supported**, and the PSD2 ID is read from Subject OID `2.5.4.97`. So LHV Phase 1 needs only:
+
+- **mTLS** (QWAC client cert + key) on the transport.
+- **`X-Request-ID`** (UUID) per call.
+- **Bearer token** on AIS/PIS calls.
+- **Secret redaction** in logs and errors.
+- **No request-body signing** — no JWS/QSEAL for LHV. Do not overbuild it for this bank.
+
+Key handling (accepted): private keys are **local files referenced by path** (`LHV_CLIENT_CERT_PATH`, `LHV_CLIENT_KEY_PATH`, `LHV_CA_CHAIN_PATH`, `LHV_TPP_ID`); `certs/`, `*.key`, `*.crt`, `*.pem`, `.env` are gitignored. **No certs/keys in git, docs, fixtures, logs, or errors.** Error text may say `client key file missing` or `client certificate invalid`, but must **not** print absolute key paths that could reveal workstation structure (e.g. `failed loading /Users/.../secret.key`) outside an explicit debug mode.
+
+> Future banks may require QSEAL/JWS signing. The signing seam stays deferred (below); LHV does not need it, so it is not built yet.
+
 ## Deferred mechanics (interfaces sketched later, implemented when a real bank forces them)
 
 | Mechanism | When | Notes |

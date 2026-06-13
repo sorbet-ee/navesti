@@ -30,21 +30,40 @@ These spikes de-risk auth flows and endpoint quirks; they are *reference materia
 - **Known quirks:** none; it exists to *generate* the awkward cases deliberately.
 - **Documents needed:** none. **Credentials:** fake by construction.
 
-### 2. LHV AIS sandbox (Phase 4)
+### 2. LHV — Phase 1 vertical slice (active)
 
-- **Why:** Sorbet's home bank (Estonia), prior spike proves auth path works, sandbox access already obtained, mTLS + PSD2-style API is representative of the Baltic banks.
-- **Expected auth flow:** OAuth2 + mTLS (PSD2 test certs), consent → SCA redirect → token.
-- **AIS:** accounts, balances, transactions.
-- **PIS:** not in this phase.
-- **Webhook/polling:** polling first (AIS needs no webhooks).
-- **Known quirks (from spike):** mTLS chain handling; to be re-documented during implementation.
-- **Documents needed:** LHV Connect/PSD2 API docs, sandbox onboarding guide.
-- **Credentials/certificates:** sandbox client cert/key (**rotate or re-issue — the old pair is committed in `navesti_lhv` branch history**), client id.
+Estonian **LHV Pank PSD2 / Berlin Group** interface (`api.lhv.eu/psd2` — *not* the UK LHV Bank Limited / Salt Edge product). One end-to-end journey, smallest slice that proves the architecture. Berlin Group REST/JSON, mTLS/QWAC only (no QSEAL). Details in [providers/lhv/swagger-notes.md](providers/lhv/swagger-notes.md); status dialect in [08-status-normalization.md](08-status-normalization.md).
 
-### 3. LHV PIS sandbox (Phase 5)
+**Included (Phase 1):**
 
-- **Why:** same dialect, adds money movement on a bank whose AIS dialect we already trust; first real test of status normalization, ambiguity handling, idempotency.
-- **Expected auth flow:** as AIS, plus payment SCA.
+- TPP verification (`GET /v1/tpp-verification`)
+- OAuth redirect URL builder
+- OAuth token exchange (`POST /oauth/token`, authorization_code)
+- AIS accounts-list, **no-consent** variant (`GET /v1/accounts-list`)
+- PIS SEPA **JSON** initiation (`POST /v1.1/payments/sepa-credit-transfers`)
+- PIS status polling (`GET /v1.1/.../{paymentId}/status`)
+- LHV status dialect (rich label + safety_status + side_effect_possible)
+
+**Excluded (later phases):**
+
+- XML payments / bulk / international / UK FPS / SWIFT
+- decoupled SCA execution
+- PIIS (confirmation of funds)
+- payment cancellation
+- balances & transactions endpoints
+- consent lifecycle (long/short-term consents)
+- token refresh / revoke
+- real persistence, Sorbet-Core wrapper, UI
+
+- **Auth flow:** OAuth2 redirect + mTLS (sandbox test certs). For AIS/PIS smoke tests, sandbox ships preset bearer tokens (`Liis-MariMnnik`, `Donaldduck`) so the redirect dance isn't required to exercise the data calls.
+- **Webhook/polling:** polling only.
+- **Known quirks:** multi-currency accounts report `currency: "XXX"`; RCVD/RVCD spelling variance; ACSP can linger.
+- **Credentials/certificates:** sandbox client cert/key in gitignored `certs/`, referenced by env path (`LHV_CLIENT_CERT_PATH` etc.); TPP id `PSDEE-LHVTEST-e37b7b` (extractable from cert OID 2.5.4.97). The old pair committed in `navesti_lhv` branch history must not be reused. Regenerate the sandbox pair when convenient — it doesn't block implementation.
+
+### 3. LHV — later phases (PIS hardening, AIS depth)
+
+- **Why:** extend the proven dialect — balances/transactions, consent lifecycle, decoupled SCA, cancellation, token refresh, then XML.
+- **Expected auth flow:** as Phase 1, plus payment SCA depth.
 - **AIS:** already done. **PIS:** SEPA credit transfer (+ instant if sandbox supports).
 - **Webhook/polling:** per sandbox support; polling fallback regardless.
 - **Documents needed:** payment initiation API docs, status code list (ISO 20022 subset).

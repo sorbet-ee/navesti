@@ -32,6 +32,7 @@ Legend: *Decision needed?* **yes** = must be settled before Phase 1 code; **no**
 
 ## Q4. Flow execution: generic engine or adapter-specific at first?
 
+- **DECIDED (2026-06-13):** Adapter-specific. Phase 1 is an adapter-specific runtime with dialect tables; **no generic flow engine yet**. Flows are explicit, ordered adapter methods documented + conformance-tested.
 - **Default recommendation:** Adapter-specific. Flows are explicit, ordered adapter methods; the "flow" exists as documentation + conformance tests. No engine ([06-flow-language.md](06-flow-language.md)).
 - **Alternatives:** (a) declarative step list executed by a runner; (b) full workflow engine (the `pre_gem` approach — already tried; it absorbed retry/error policy that belongs to Sorbet-Core).
 - **Trade-offs:** explicit methods repeat some boilerplate across adapters; an engine compresses it but ossifies the step interface before we know it.
@@ -64,6 +65,7 @@ Legend: *Decision needed?* **yes** = must be settled before Phase 1 code; **no**
 
 ## Q8. How do we represent ambiguous vs pending vs unknown?
 
+- **DECIDED (2026-06-13):** Resolved by the three-layer model in [08-status-normalization.md](08-status-normalization.md): `status` (rich label) + `safety_status` (`confirmed`/`rejected`/`pending`/`ambiguous`/`unknown`) + `side_effect_possible` (`true`/`false`/`unknown`). The **descriptive-status question is also closed**: rich labels are first-class Navesti status; `safety_status` is the minimal Sorbet-Core contract. `side_effect_possible` is *not* uniform across `pending` (RCVD/RVCD `false` pre-SCA, ACSP `true` post-SCA). Sorbet-Core safety owner has acked the RCVD↔ACSP boundary.
 - **Default recommendation:** Three distinct categories ([08-status-normalization.md](08-status-normalization.md)): `pending` = bank acknowledged and is processing; `ambiguous` = no readable answer, bank may have acted; `unknown` = readable answer, unrecognized code. All three `side_effect_possible: true`. `unknown` never collapses into `rejected`.
 - **Alternatives:** (a) fold unknown into ambiguous (loses the "update the dialect" signal); (b) fold ambiguous into pending (catastrophic — pending implies a provider_reference to poll; ambiguous may have none).
 - **Trade-offs:** three categories cost Sorbet-Core three handling paths; the alternatives cost correctness.

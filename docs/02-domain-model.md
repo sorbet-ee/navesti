@@ -17,20 +17,26 @@ Conventions used below: *Raw evidence?* = does the object carry a `raw` field. *
 
 ## Navesti::Account
 
-- **Purpose:** a bank account as the bank describes it.
-- **Required:** `provider_account_id`, `currency`.
-- **Optional:** `iban`, `name`, `owner_name`, `account_type`, `status`.
+- **Purpose:** a provider account *container* (an IBAN/resource), **not money evidence**. Per-currency monetary values live in Balance, never here.
+- **Required:** `provider_account_id`, `provider_reported_currency`.
+- **Optional:** `iban`, `name`, `owner_name`, `account_type`, `cash_account_type`, `product`, `status`.
 - **Raw evidence?** Yes.
 - **Maps to Sorbet-Core?** funding-source / counterparty account references.
-- **Open questions:** is a multi-currency account (Wise, Revolut) one Account per currency or one Account with many balances? Proposed: one Account per (provider_account_id, currency) pair — keeps Balance unambiguous.
+- **Decided (multi-currency):** an Account is one container per `provider_account_id`/IBAN; it does **not** split per currency. `provider_reported_currency` is preserved verbatim and may be a multi-currency sentinel — **do not ISO-4217-validate it.** LHV accounts are multi-currency and the accounts-list reports `currency: "XXX"`; some providers send `nil`. Real, ISO-validated currency belongs to `Balance.currency` (one Balance per currency). For LHV the `balances`/`transactions` links are optional on the account object.
+
+  ```
+  Account.currency   # provider-reported, may be "XXX" / nil — never validated
+  Balance.currency   # actual money currency, ISO-4217 expected
+  ```
 
 ## Navesti::Balance
 
 - **Purpose:** a balance snapshot at a moment in time.
-- **Required:** `account_ref`, `available` (Money), `booked` (Money), `captured_at` (UTC).
+- **Required:** `account_ref`, `currency` (ISO-4217 — this is where real currency lives), `available` (Money), `booked` (Money), `captured_at` (UTC).
 - **Optional:** `credit_limit` (Money), `balance_type` (bank's own type label).
 - **Raw evidence?** Yes.
 - **Maps to Sorbet-Core?** AIS BalanceProvider port output.
+- **Note:** Balance is the money-evidence object; Account is only a container (see Account, above). A multi-currency LHV account yields several Balances, one per currency.
 - **Open questions:** some banks return only one balance type — is `booked` required or do we allow `available`-only with explicit absence? Proposed: both fields present, value may be `nil` with `raw` showing why; conformance suite has a "missing balance field" case.
 
 ## Navesti::Transaction
@@ -62,12 +68,12 @@ Conventions used below: *Raw evidence?* = does the object carry a `raw` field. *
 
 ## Navesti::PaymentStatus
 
-- **Purpose:** the normalized status vocabulary (see [08-status-normalization.md](08-status-normalization.md)).
-- **Required:** `category` (:confirmed/:rejected/:pending/:ambiguous/:unknown), `side_effect_possible` (Boolean), `bank_status_code` (original string, may be nil for transport failures).
-- **Optional:** `reason_code`, `reason_message` (bank-provided, verbatim).
-- **Raw evidence?** Carried by the containing Submission/Event; the status itself stores the original code.
-- **Maps to Sorbet-Core?** drives Sorbet-Core's packet state machine — but the mapping from category to packet transition is Sorbet-Core's decision.
-- **Open questions:** is `unknown` distinct from `ambiguous`? Proposed: yes — `unknown` = bank answered with a code we don't recognize; `ambiguous` = we don't know whether the bank acted. Both `side_effect_possible: true`.
+- **Purpose:** the three-layer normalized status (see [08-status-normalization.md](08-status-normalization.md)).
+- **Required:** `status` (rich Navesti label, e.g. `:pending_execution`), `safety_status` (`:confirmed`/`:rejected`/`:pending`/`:ambiguous`/`:unknown`), `side_effect_possible` (`true`/`false`/`:unknown`), `raw_status` (original bank string, may be nil for transport failures).
+- **Optional:** `reason_code`, `reason_message` (bank-provided, verbatim), `provider_reference`.
+- **Raw evidence?** Yes — carries `raw`; `raw_status` is the verbatim code.
+- **Maps to Sorbet-Core?** `safety_status` + `side_effect_possible` are the contract Sorbet-Core acts on; the rich `status` is expressive detail. The mapping from `safety_status` to packet transition is Sorbet-Core's decision.
+- **Decided:** rich `status` is first-class Navesti vocabulary; `safety_status` is the minimal Core contract; both always present. `unknown` (unrecognized bank code) and `ambiguous` (we don't know whether the bank acted) stay distinct on the safety axis.
 
 ## Navesti::BankEvent
 
