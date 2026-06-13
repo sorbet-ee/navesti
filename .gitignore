@@ -1,3 +1,17 @@
+# === Secrets — never commit (CLAUDE.md rule 18, docs/10) ===
+# mTLS certificates, private keys, and credential material live on disk
+# locally and are referenced by path via env vars. They must never enter
+# git history.
+certs/
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+
 *.gem
 *.rbc
 /.config
