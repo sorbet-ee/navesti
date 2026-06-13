@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Manual OAuth flow: starts the local callback server, prints the URL for the
+# human to open in their own browser, waits for the redirect, and saves the
+# authorization code to tmp/lhv/oauth_code.json.
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.capture_oauth_code do |url, _state|
+  puts "Open this URL in your browser and complete bank login/SCA:"
+  puts
+  puts url
+  puts
+end

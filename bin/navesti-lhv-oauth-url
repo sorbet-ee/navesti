@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Builds and prints the OAuth authorization redirect URL. No network call.
+require "securerandom"
+require_relative "../tools/dev/lhv_dev"
+
+state = ENV["LHV_OAUTH_STATE"] || "navesti-#{SecureRandom.hex(8)}"
+interaction = LhvDev.adapter.authorize_url(redirect_uri: LhvDev.redirect_uri, state: state)
+
+puts "state:        #{state}"
+puts "redirect_uri: #{LhvDev.redirect_uri}"
+puts
+puts interaction.url

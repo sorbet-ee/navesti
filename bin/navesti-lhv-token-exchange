@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Exchanges the captured authorization code (tmp/lhv/oauth_code.json) for a
+# token set and saves it to tmp/lhv/token_set.json (chmod 600).
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+code = ENV["LHV_AUTH_CODE"] || LhvDev.read_json("oauth_code.json")["code"]
+abort "No authorization code available." if code.to_s.empty?
+
+token = LhvDev.adapter.exchange_code(code: code, redirect_uri: LhvDev.redirect_uri)
+
+# Persist the full token set for later steps — secret, chmod 600. We do NOT
+# print the token material (CLAUDE.md browser rule 12).
+LhvDev.save_json("token_set.json", {
+  "access_token" => token.access_token,
+  "refresh_token" => token.refresh_token,
+  "token_type" => token.token_type,
+  "expires_in" => token.expires_in,
+  "scope" => token.scope,
+  "obtained_at" => token.obtained_at
+}, secret: true)
+
+puts "Token set saved -> tmp/lhv/token_set.json (chmod 600)"
+puts token.inspect # redacted by Token#inspect

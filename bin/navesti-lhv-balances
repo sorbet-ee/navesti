@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Fetches balances for an account (LHV_ACCOUNT_ID, or the first saved account).
+# Consent-gated: pass LHV_CONSENT_ID if the token requires it.
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+token = ENV["LHV_ACCESS_TOKEN"] || LhvDev.read_json("token_set.json")["access_token"]
+
+account_id = ENV["LHV_ACCOUNT_ID"]
+if account_id.to_s.empty?
+  accounts = LhvDev.read_json("accounts.json")
+  abort "No account id. Set LHV_ACCOUNT_ID or run lhv-accounts first." if accounts.empty?
+  account_id = accounts.first["provider_account_id"]
+end
+
+balances = LhvDev.adapter.balances(
+  access_token: token,
+  account_id: account_id,
+  consent_id: ENV["LHV_CONSENT_ID"],
+  psu_corporate_id: ENV["LHV_PSU_CORPORATE_ID"]
+)
+
+balances.each do |bal|
+  puts "#{bal.currency}  available=#{bal.available_amount_minor.inspect}  booked=#{bal.booked_amount_minor.inspect}"
+end
+LhvDev.save_json("balances.json", balances.map do |b|
+  { currency: b.currency, available_amount_minor: b.available_amount_minor,
+    booked_amount_minor: b.booked_amount_minor, captured_at: b.captured_at }
+end)
+puts "saved -> tmp/lhv/balances.json (account #{account_id})"

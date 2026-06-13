@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Initiates a SEPA JSON payment and prints the paymentId + scaRedirect.
+# Order built from env (sandbox defaults: Liis-Mari -> Donald).
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+token = ENV["LHV_ACCESS_TOKEN"] || LhvDev.read_json("token_set.json")["access_token"]
+order = LhvDev.order_from_env
+
+submission = LhvDev.adapter.initiate_sepa_payment(
+  order: order,
+  access_token: token,
+  redirect_uri: ENV["LHV_PIS_REDIRECT_URI"] || "http://localhost:4567/lhv/pis/callback",
+  nok_redirect_uri: ENV["LHV_PIS_NOK_REDIRECT_URI"]
+)
+
+payment_id = submission.provider_reference&.value
+puts "paymentId:     #{payment_id}"
+puts "status:        #{submission.status.status} (#{submission.status.raw_status})"
+puts "safety_status: #{submission.safety_status}"
+puts "side_effect:   #{submission.side_effect_possible}"
+puts "scaRedirect:   #{submission.interaction&.url || '(none — SCA exemption?)'}"
+
+LhvDev.save_json("payment.json", {
+  payment_id: payment_id,
+  status: submission.status.status,
+  raw_status: submission.status.raw_status,
+  safety_status: submission.safety_status,
+  side_effect_possible: submission.side_effect_possible,
+  sca_redirect: submission.interaction&.url,
+  status_url: submission.status_url
+})
+puts "saved -> tmp/lhv/payment.json"

@@ -1,0 +1,38 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Verifies the local mTLS material: cert/key modulus match, extracts the TPP id
+# from the certificate (OID 2.5.4.97), and verifies the chain if present.
+# No network call — safe to run without LHV_LIVE.
+
+require "openssl"
+require_relative "../tools/dev/lhv_dev"
+LhvDev.boot
+
+cert_path = LhvDev.env("LHV_CLIENT_CERT_PATH")
+key_path  = LhvDev.env("LHV_CLIENT_KEY_PATH")
+chain_path = ENV["LHV_CA_CHAIN_PATH"]
+
+cert = OpenSSL::X509::Certificate.new(File.read(cert_path))
+key  = OpenSSL::PKey.read(File.read(key_path))
+
+cert_mod = cert.public_key.respond_to?(:n) ? cert.public_key.n : nil
+key_mod  = key.respond_to?(:n) ? key.n : nil
+match = cert_mod && key_mod && cert_mod == key_mod
+puts "cert/key modulus match: #{match ? 'OK' : 'MISMATCH'}"
+abort "Certificate and key do not match." unless match
+
+tpp_id = Navesti::Security::CertificateIdentity.from_certificate(cert)
+puts "TPP id (OID 2.5.4.97): #{tpp_id}"
+puts "subject CN:            #{cert.subject.to_a.find { |n, | n == 'CN' }&.at(1)}"
+puts "not_after:             #{cert.not_after.utc.iso8601}"
+
+if chain_path && File.file?(chain_path)
+  store = OpenSSL::X509::Store.new
+  File.read(chain_path).scan(/-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----/m).each do |pem|
+    store.add_cert(OpenSSL::X509::Certificate.new(pem))
+  end
+  puts "chain verifies cert:   #{store.verify(cert) ? 'OK' : 'FAILED'}"
+else
+  puts "chain verifies cert:   (no LHV_CA_CHAIN_PATH; skipped)"
+end
