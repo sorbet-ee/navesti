@@ -12,13 +12,19 @@ module Navesti
         module_function
 
         # Builds the raw-evidence hash carried by provider-derived objects.
-        def evidence(response)
-          {
-            status: response.status,
-            headers: response.headers,
-            body: response.body,
-            captured_at: Time.now.utc.iso8601
-          }
+        #
+        # redact: true scrubs secrets from the body and headers before storing —
+        # used for OAuth token responses, whose body *is* the secret. Other
+        # responses keep verbatim evidence (their bodies are not secrets), so
+        # auditability is preserved where it is safe.
+        def evidence(response, redact: false)
+          body = response.body
+          headers = response.headers
+          if redact
+            body = Navesti::Redaction.scrub(body.to_s)
+            headers = headers.transform_values { |v| Navesti::Redaction.scrub(v.to_s) }
+          end
+          { status: response.status, headers: headers, body: body, captured_at: Time.now.utc.iso8601 }
         end
 
         # GET /v1/tpp-verification → Navesti::TppVerification
@@ -106,7 +112,10 @@ module Navesti
             expires_in: body["expires_in"],
             scope: body["scope"],
             obtained_at: Time.now.utc.iso8601,
-            raw: evidence(response)
+            # Token response body contains access/refresh tokens — store redacted
+            # evidence so Token#raw / #to_h never leak the secret (the typed
+            # access_token field still carries the real value for the host).
+            raw: evidence(response, redact: true)
           )
         end
 

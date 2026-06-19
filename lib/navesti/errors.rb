@@ -44,6 +44,12 @@ module Navesti
   # Messages must stay path-free outside debug mode (docs/10).
   class CredentialError < Error; end
 
+  # A URL (e.g. a HATEOAS link) failed the same-origin check and Navesti
+  # refused to follow it with credentials attached. Prevents a bank-supplied or
+  # tampered link from redirecting an mTLS/Bearer request off-origin (SSRF /
+  # token exfiltration). The offending URL is never echoed (it may carry a token).
+  class UnsafeUrlError < Error; end
+
   # An access token / consent was rejected by the bank as expired or invalid.
   # The host re-supplies credentials; Navesti never refreshes on its own.
   class ConsentError < Error; end

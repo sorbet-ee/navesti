@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "uri"
+require "erb"
 
 module Navesti
   module Providers
@@ -62,15 +63,25 @@ module Navesti
         # a Consent-ID. Prefer the href from accounts-list when available; this
         # builds the canonical path when it is not.
         def account_balances_url(account_id)
-          "#{root}/v1/accounts/#{account_id}/balances"
+          "#{root}/v1/accounts/#{encode_segment(account_id)}/balances"
         end
 
-        # Resolves a (possibly relative) HATEOAS href against the root, so links
-        # returned by the bank can be followed without re-hardcoding paths.
+        # Resolves a HATEOAS href to a full URL, **pinned to the configured
+        # origin**. A leading-slash path is resolved against root; an absolute
+        # URL is allowed only if its scheme/host/port match root. Anything else
+        # raises UnsafeUrlError — so a bank-supplied or tampered link can never
+        # redirect a credentialed (mTLS + Bearer) request to another host
+        # (SSRF / token exfiltration). Reuse this for any followed link.
         def absolute(href)
-          return href if href.to_s.start_with?("http")
+          s = href.to_s.strip
+          raise UnsafeUrlError, "empty URL" if s.empty?
+          raise UnsafeUrlError, "refusing protocol-relative URL" if s.start_with?("//")
+          return "#{root}#{s}" if s.start_with?("/")
 
-          "#{root}#{href}"
+          uri = parse_uri(s)
+          return s if same_origin?(uri)
+
+          raise UnsafeUrlError, "refusing to follow off-origin URL (expected origin #{origin_of(root)})"
         end
 
         # --- PIS JSON (v1.1) ---
@@ -80,12 +91,37 @@ module Navesti
         end
 
         def payment_status_url(payment_id)
-          "#{sepa_payment_url}/#{payment_id}/status"
+          "#{sepa_payment_url}/#{encode_segment(payment_id)}/status"
         end
 
         # Cancel a payment — only valid before the PSU completes SCA.
         def payment_cancel_url(payment_id)
-          "#{sepa_payment_url}/#{payment_id}/cancel"
+          "#{sepa_payment_url}/#{encode_segment(payment_id)}/cancel"
+        end
+
+        private
+
+        # Percent-encodes a single path segment (RFC 3986 unreserved), so a
+        # caller/provider id containing /, ?, #, or spaces cannot change the
+        # addressed path or inject a query. Encoding keeps everything on-origin.
+        def encode_segment(value)
+          ERB::Util.url_encode(value.to_s)
+        end
+
+        def parse_uri(string)
+          URI.parse(string)
+        rescue URI::InvalidURIError
+          raise UnsafeUrlError, "invalid URL"
+        end
+
+        def same_origin?(uri)
+          root_uri = URI.parse(root)
+          uri.scheme == root_uri.scheme && uri.host == root_uri.host && uri.port == root_uri.port
+        end
+
+        def origin_of(url)
+          u = URI.parse(url)
+          "#{u.scheme}://#{u.host}"
         end
       end
     end

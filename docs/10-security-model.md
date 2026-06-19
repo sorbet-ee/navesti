@@ -43,6 +43,14 @@ Key handling (accepted): private keys are **local files referenced by path** (`L
 
 > Future banks may require QSEAL/JWS signing. The signing seam stays deferred (below); LHV does not need it, so it is not built yet.
 
+## Link following, path building, and token evidence (hardening)
+
+From the PR-#5 review, three boundary rules now hold:
+
+1. **Same-origin link following.** HATEOAS links (e.g. `account._links.balances.href`) are resolved through `Config#absolute`, which is **pinned to the configured origin**: a leading-slash path resolves against root; an absolute URL is allowed only if its scheme/host/port match root; anything else (off-origin, look-alike host, userinfo smuggling, scheme downgrade, protocol-relative) raises `Navesti::UnsafeUrlError` **before any request is sent**. This stops a bank-supplied or tampered link from redirecting a credentialed (mTLS + `Bearer` + `Consent-ID`) request to another host — the real harm being **access-token exfiltration / SSRF**, not private-key exposure (the key is never transmitted). Any future followed link (e.g. decoupled `authorisation_url`) must use the same guard. The offending URL is never echoed in the error (it may carry a token).
+2. **Path-segment encoding.** Caller/provider ids interpolated into URL paths (`account_id`, `payment_id`) are percent-encoded per segment, so a `/`, `?`, `#`, or traversal-like id cannot change the addressed path or inject a query. Encoding keeps everything on-origin.
+3. **Redacted token evidence.** Most provider bodies are non-secret and kept verbatim as raw evidence. The OAuth token response is the exception — its body *is* the secret — so `Token#raw` stores **redacted** evidence (`evidence(response, redact: true)` scrubs `access_token`/`refresh_token`). The typed `access_token` field still carries the real value for the host; the evidence blob, which reads as "safe to persist," does not duplicate it.
+
 ## Deferred mechanics (interfaces sketched later, implemented when a real bank forces them)
 
 | Mechanism | When | Notes |

@@ -107,6 +107,19 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
       expect(token.inspect).to include("[REDACTED]")
     end
 
+    it "stores redacted raw evidence so Token#raw / #to_h cannot leak the token" do
+      a, = adapter(Fixtures.lhv_response("token"))
+      token = a.exchange_code(code: "c", redirect_uri: "https://host/cb")
+
+      # The typed field still carries the real value (the host needs it)...
+      expect(token.access_token).to eq("test-access-token-AAAA")
+      # ...but the raw evidence body — the thing that looks persist-as-evidence
+      # safe — does not duplicate the secret.
+      expect(token.raw[:body]).not_to include("test-access-token-AAAA")
+      expect(token.raw[:body]).not_to include("test-refresh-token-BBBB")
+      expect(token.raw[:body]).to include("[REDACTED]")
+    end
+
     it "raises a ProviderError on an OAuth error response" do
       err = FakeHTTPClient.json_response(status: 400, body: { "error" => "invalid_grant" })
       a, = adapter(err)
@@ -324,6 +337,15 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
       a, = adapter(FakeHTTPClient.json_response(status: 401, body: {}))
       expect { a.balances(access_token: "expired", account_id: "acc-1") }
         .to raise_error(Navesti::ConsentError)
+    end
+
+    it "refuses an off-origin balances_href before sending credentials anywhere" do
+      a, http = adapter # no responses queued
+      expect do
+        a.balances(access_token: "tok", account_id: "acc-1",
+                   balances_href: "https://evil.com/v1/accounts/acc-1/balances")
+      end.to raise_error(Navesti::UnsafeUrlError)
+      expect(http.requests).to be_empty # never dialed out
     end
   end
 
