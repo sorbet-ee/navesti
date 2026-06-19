@@ -16,8 +16,8 @@ OPEN := $(shell command -v open >/dev/null 2>&1 && echo open || echo xdg-open)
 
 .PHONY: help setup test test-unit test-lhv test-live-lhv build install-local console clean \
         cert-check swagger-open lhv-tpp lhv-oauth-url lhv-oauth-manual lhv-oauth-firefox \
-        lhv-token-exchange lhv-accounts lhv-balances lhv-sepa-init lhv-sepa-auth-firefox \
-        lhv-sepa-status lhv-flow-ais lhv-flow-pis
+        lhv-token-exchange lhv-token-revoke lhv-accounts lhv-balances lhv-sepa-init \
+        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis
 
 help: ## Show this help
 	@echo "Navesti developer commands:"
@@ -106,6 +106,14 @@ lhv-sepa-auth-firefox: ## Open scaRedirect in Firefox for manual sandbox SCA + p
 lhv-sepa-status: ## Poll payment status once
 	@$(require_live)
 	$(RUBY) bin/navesti-lhv-sepa-status
+
+lhv-sepa-cancel: ## Cancel a payment (pre-SCA only)
+	@$(require_live)
+	$(RUBY) bin/navesti-lhv-sepa-cancel
+
+lhv-token-revoke: ## Revoke a token (default: saved refresh token)
+	@$(require_live)
+	$(RUBY) bin/navesti-lhv-token-revoke
 
 lhv-flow-ais: ## Full OAuth -> token -> accounts -> balances developer flow
 	@$(require_live)

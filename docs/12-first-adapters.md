@@ -50,16 +50,16 @@ Estonian **LHV Pank PSD2 / Berlin Group** interface (`api.lhv.eu/psd2` — *not*
 - OAuth token refresh (`POST /oauth/token`, refresh_token grant).
 - Balance value object reshaped to the BalanceProvider-port contract.
 
-**Phase LHV-2B — abandonment handling (next):**
+**Phase LHV-2B — abandonment handling (done):**
 
-- payment cancellation (`DELETE …/cancel`) — matters because RCVD/RVCD is pre-SCA (`side_effect_possible: false`); if the PSU abandons SCA, Sorbet-Core may cancel the bank-side initiation before retrying elsewhere.
-- token revoke (`POST /oauth/revoke`).
-- decoupled SCA *discovery* (not full execution).
+- payment cancellation (`DELETE …/cancel`) → cancelled, no-side-effect `PaymentStatus`; matters because RCVD/RVCD is pre-SCA (`side_effect_possible: false`), so if the PSU abandons SCA the host can cancel the bank-side initiation before retrying elsewhere. If SCA already completed, the bank rejects and the call raises — the caller must **not** assume cancellation succeeded.
+- token revoke (`POST /oauth/revoke`) → idempotent; revoking a nonexistent token still succeeds.
+- decoupled SCA **discovery** (read-only): `PaymentSubmission` surfaces `sca_methods` (`ScaMethod` list) and `authorisation_url` (`decoupled_available?`, `sca_method_ids`). Starting the decoupled flow (`POST …/authorisations`) is **not** built.
 
 **Excluded (later phases still):**
 
 - XML payments / bulk / international / UK FPS / SWIFT
-- full decoupled SCA execution
+- full decoupled SCA **execution** (`POST …/authorisations` + status polling)
 - PIIS (confirmation of funds)
 - transactions endpoint
 - consent **creation** lifecycle (long/short-term consents)

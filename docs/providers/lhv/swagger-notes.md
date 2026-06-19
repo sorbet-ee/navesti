@@ -42,9 +42,17 @@ Phase LHV-2A:
 | AIS Read Balances | `GET /v1/accounts/{resourceId}/balances` | **consent-gated**: `Bearer` + `Consent-ID` (host-supplied); optional `PSU-Corporate-ID`. Returns Berlin Group typed `balances[]` (`interimAvailable`, `closingBooked`, …). Prefer the `_links.balances.href` from accounts-list. |
 | OAuth token refresh | `POST /oauth/token` | form-encoded; `client_id`, `grant_type=refresh_token`, `refresh_token` (no `redirect_uri`) |
 
-## Deferred endpoints (LHV-2B and later)
+Phase LHV-2B:
 
-Payment cancellation (`DELETE …/cancel`), token revoke (`POST /oauth/revoke`), decoupled SCA (`POST …/authorisations`), consent **creation** (`POST /v1/consents`, `…/authorisations`), accounts-with-consent (`POST /v1/accounts`), transactions, PIIS (confirmation of funds), XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments.
+| Purpose | Method & path | Notes |
+|---|---|---|
+| Payment cancellation | `DELETE /v1.1/payments/sepa-credit-transfers/{paymentId}/cancel` | `Bearer`. Valid only pre-SCA; success → CANC / synthesized cancelled (no side effect). Post-SCA → bank rejects (raises). |
+| OAuth token revoke | `POST /oauth/revoke` | form-encoded; `client_id`, `token`, optional `token_type_hint`. Idempotent (200 even for nonexistent token). |
+| Decoupled SCA **discovery** | (read-only, from the init response) | `scaMethods[]` + `_links.startAuthorisationWithAuthenticationMethodSelection` surfaced on `PaymentSubmission`; the flow is not started. |
+
+## Deferred endpoints (later)
+
+Decoupled SCA **execution** (`POST …/authorisations` + `GET …/authorisations/{id}`), consent **creation** (`POST /v1/consents`, `…/authorisations`), accounts-with-consent (`POST /v1/accounts`), transactions, PIIS (confirmation of funds), XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments.
 
 ## Known discrepancies & findings
 

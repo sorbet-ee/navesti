@@ -2,7 +2,7 @@
 
 > Navesti is the small language of bank connectivity for Sorbet: a headless Ruby gem that describes bank capabilities, flows, mappings, statuses, and webhooks as compact, auditable dialects, then turns them into normalized AIS/PIS facts for Sorbet-Core.
 
-**Current status: Phase LHV-2A (branch `phase-2a-lhv-balances`).** Gem skeleton, frozen value objects, mTLS HTTP client, certificate identity, and the LHV adapter: TPP verification, OAuth redirect + token exchange + refresh, AIS accounts-list and consent-gated **balances**, PIS SEPA JSON initiation, status polling, and the status/balance-type dialect — with a green spec suite. No Sorbet-Core integration, no persistence, no UI. See [ROADMAP.md](ROADMAP.md) and [docs/12-first-adapters.md](docs/12-first-adapters.md).
+**Current status: Phase LHV-2B (branch `phase-2b-lhv`).** Gem skeleton, frozen value objects, mTLS HTTP client, certificate identity, and the LHV adapter: TPP verification, OAuth redirect + token exchange + refresh + **revoke**, AIS accounts-list and consent-gated balances, PIS SEPA JSON initiation, status polling, **payment cancellation**, and **decoupled-SCA discovery** — plus the status/balance-type dialect and a Makefile + Firefox dev harness. Green spec suite (96 examples). No Sorbet-Core integration, no persistence, no UI. See [ROADMAP.md](ROADMAP.md) and [docs/12-first-adapters.md](docs/12-first-adapters.md).
 
 ## What Navesti is
 

@@ -43,6 +43,10 @@ module Navesti
           "#{root}/oauth/token"
         end
 
+        def oauth_revoke_url
+          "#{root}/oauth/revoke"
+        end
+
         # --- AIS (v1) ---
 
         def tpp_verification_url
@@ -77,6 +81,11 @@ module Navesti
 
         def payment_status_url(payment_id)
           "#{sepa_payment_url}/#{payment_id}/status"
+        end
+
+        # Cancel a payment — only valid before the PSU completes SCA.
+        def payment_cancel_url(payment_id)
+          "#{sepa_payment_url}/#{payment_id}/cancel"
         end
       end
     end

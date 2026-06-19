@@ -131,10 +131,33 @@ module Navesti
             interaction: sca_interaction(links, provider_reference, response),
             status_url: link_href(links, "status"),
             authorisation_url: link_href(links, "startAuthorisationWithAuthenticationMethodSelection"),
+            sca_methods: sca_methods(body),
             idempotency_key: idempotency_key,
             submitted_at: Time.now.utc.iso8601,
             raw: evidence(response)
           )
+        end
+
+        # DELETE /v1.1/payments/sepa-credit-transfers/{id}/cancel → PaymentStatus
+        #
+        # Cancellation is only valid before the PSU completes SCA; on success the
+        # bank-side initiation is cancelled and no money moved. A body with a
+        # transactionStatus (typically CANC) is normalized through the dialect;
+        # an empty/204 success is synthesized as a cancelled, no-side-effect
+        # status. Failure (e.g. SCA already done) surfaces via guard as an error.
+        def cancellation(response, payment_id:)
+          ref = payment_reference(payment_id)
+          body = response.body.to_s.strip.empty? ? nil : safe_parse(response)
+          raw_status = body.is_a?(Hash) ? body["transactionStatus"] : nil
+
+          if raw_status
+            Dialect.payment_status(raw_status, provider_reference: ref, raw: evidence(response))
+          else
+            PaymentStatus.new(
+              status: :cancelled, safety_status: :rejected, side_effect_possible: false,
+              raw_status: nil, provider_reference: ref, raw: evidence(response)
+            )
+          end
         end
 
         # GET /v1.1/payments/sepa-credit-transfers/{id}/status → PaymentStatus
@@ -166,6 +189,26 @@ module Navesti
           return nil if payment_id.to_s.empty?
 
           ProviderReference.new(value: payment_id, kind: :payment, connector: Config::PROVIDER)
+        end
+
+        # Decoupled SCA discovery: the methods the bank offers for this payment.
+        def sca_methods(body)
+          return [] unless body.is_a?(Hash)
+
+          (body["scaMethods"] || []).map do |m|
+            ScaMethod.new(
+              method_id: m["authenticationMethodId"],
+              authentication_type: m["authenticationType"],
+              name: m["name"]
+            )
+          end
+        end
+
+        # Parses a body, returning nil instead of raising (for tolerant paths).
+        def safe_parse(response)
+          response.json
+        rescue MappingError
+          nil
         end
 
         # Redirect SCA is offered when _links.scaRedirect is present. Its

@@ -364,6 +364,97 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
     end
   end
 
+  # --- decoupled SCA discovery (LHV-2B) ---
+
+  describe "decoupled SCA discovery on a submission" do
+    it "surfaces the available SCA methods and the authorisation endpoint" do
+      a, = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+      submission = a.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+
+      expect(submission.sca_methods).to all(be_a(Navesti::ScaMethod))
+      expect(submission.sca_method_ids).to contain_exactly("MID", "SID")
+      expect(submission.sca_methods.first.authentication_type).to eq("SMS_OTP")
+      expect(submission.decoupled_available?).to be(true)
+      expect(submission.authorisation_url).to include("/authorisations")
+    end
+
+    it "reports no decoupled option for an ACSC exemption (no auth endpoint)" do
+      a, = adapter(Fixtures.lhv_response("payment_acsc_exempt", status: 201))
+      submission = a.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+      expect(submission.sca_methods).to be_empty
+      expect(submission.decoupled_available?).to be(false)
+    end
+  end
+
+  # --- payment cancellation (LHV-2B) ---
+
+  describe "#cancel_payment" do
+    it "cancels via DELETE and returns a cancelled, no-side-effect status" do
+      a, http = adapter(Fixtures.lhv_response("payment_cancelled"))
+      status = a.cancel_payment(payment_id: "ac8bab09", access_token: "tok")
+
+      expect(status.status).to eq(:cancelled)
+      expect(status.safety_status).to eq(:rejected)
+      expect(status.side_effect_possible).to eq(false)
+      expect(http.last_request[:method]).to eq(:delete)
+      expect(http.last_request[:url]).to include("/ac8bab09/cancel")
+    end
+
+    it "synthesizes a cancelled status for an empty 204 response" do
+      resp = Navesti::HTTP::Response.new(status: 204, headers: {}, body: "")
+      a, = adapter(resp)
+      status = a.cancel_payment(payment_id: "p-1", access_token: "tok")
+      expect(status.status).to eq(:cancelled)
+      expect(status.side_effect_possible).to eq(false)
+      expect(status.raw_status).to be_nil
+    end
+
+    it "raises (does not assume cancellation) when the bank rejects it post-SCA" do
+      resp = FakeHTTPClient.json_response(
+        status: 400,
+        body: { "tppMessages" => [{ "category" => "ERROR", "code" => "CANCELLATION_INVALID" }] }
+      )
+      a, = adapter(resp)
+      expect { a.cancel_payment(payment_id: "p-1", access_token: "tok") }
+        .to raise_error(Navesti::ProviderError) { |e| expect(e.provider_code).to eq("CANCELLATION_INVALID") }
+    end
+  end
+
+  # --- token revoke (LHV-2B) ---
+
+  describe "#revoke_token" do
+    it "revokes a refresh token and returns true" do
+      a, http = adapter(Navesti::HTTP::Response.new(status: 200, headers: {}, body: ""))
+      result = a.revoke_token(token: "test-refresh-token-BBBB", token_type_hint: "refresh_token")
+
+      expect(result).to be(true)
+      req = http.last_request
+      expect(req[:url]).to eq("https://api.sandbox.lhv.eu/psd2/oauth/revoke")
+      expect(req[:body]).to include("token=test-refresh-token-BBBB")
+      expect(req[:body]).to include("token_type_hint=refresh_token")
+      expect(req[:body]).to include("client_id=PSDEE-LHVTEST-e37b7b")
+    end
+
+    it "treats revoking a nonexistent token (200) as success" do
+      a, = adapter(Navesti::HTTP::Response.new(status: 200, headers: {}, body: ""))
+      expect(a.revoke_token(token: "already-gone")).to be(true)
+    end
+
+    it "surfaces the OAuth error on 401 (not masked as ConsentError)" do
+      resp = FakeHTTPClient.json_response(status: 401, body: { "error" => "unauthorized_client" })
+      a, = adapter(resp)
+      expect { a.revoke_token(token: "x") }
+        .to raise_error(Navesti::ProviderError) { |e| expect(e.provider_code).to eq("unauthorized_client") }
+    end
+
+    it "raises ProviderError on an invalid request (400)" do
+      resp = FakeHTTPClient.json_response(status: 400, body: { "error" => "invalid_request" })
+      a, = adapter(resp)
+      expect { a.revoke_token(token: "x", token_type_hint: "bogus") }
+        .to raise_error(Navesti::ProviderError, /invalid_request/)
+    end
+  end
+
   # --- transport error propagation ---
 
   describe "transport failures" do

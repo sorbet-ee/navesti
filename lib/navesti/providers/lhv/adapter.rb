@@ -72,7 +72,7 @@ module Navesti
             body: body,
             credentials: credentials
           )
-          guard_response!(response)
+          guard_oauth_response!(response)
           Mappers.token(response)
         end
 
@@ -124,7 +124,7 @@ module Navesti
             body: body,
             credentials: credentials
           )
-          guard_response!(response)
+          guard_oauth_response!(response)
           Mappers.token(response)
         end
 
@@ -163,6 +163,43 @@ module Navesti
           Mappers.payment_status(response, payment_id: payment_id)
         end
 
+        # DELETE /v1.1/payments/sepa-credit-transfers/{paymentId}/cancel
+        #
+        # Cancels a bank-side initiation — valid only before the PSU completes
+        # SCA (RCVD/RVCD). Useful for abandonment: if the PSU walks away from
+        # the redirect, the host can cancel here before retrying elsewhere.
+        # Returns a cancelled PaymentStatus; if SCA already completed, the bank
+        # rejects and this raises (ProviderError) — the caller must not assume
+        # cancellation succeeded.
+        def cancel_payment(payment_id:, access_token:)
+          response = @http.request(
+            method: :delete,
+            url: config.payment_cancel_url(payment_id),
+            headers: bearer_headers(access_token),
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.cancellation(response, payment_id: payment_id)
+        end
+
+        # POST /oauth/revoke — revokes an access or refresh token. Idempotent:
+        # revoking a nonexistent token still succeeds (LHV returns 200). The host
+        # owns token lifecycle; Navesti just performs the revocation. Returns
+        # true on success; raises on auth/validation failure.
+        def revoke_token(token:, token_type_hint: nil)
+          form = { client_id: client_id, token: token }
+          form[:token_type_hint] = token_type_hint if token_type_hint
+          response = @http.request(
+            method: :post,
+            url: config.oauth_revoke_url,
+            headers: base_headers("Content-Type" => "application/x-www-form-urlencoded"),
+            body: URI.encode_www_form(form),
+            credentials: credentials
+          )
+          guard_oauth_response!(response)
+          true
+        end
+
         private
 
         def client_id
@@ -196,14 +233,27 @@ module Navesti
           base_headers("Authorization" => "Bearer #{access_token}").merge(extra)
         end
 
-        # Surfaces transport-level HTTP failures as typed, redaction-safe errors.
-        # 401 -> ConsentError (host re-supplies credentials, Navesti never
-        # refreshes). In-body tppMessages ERROR / OAuth error -> ProviderError.
+        # AIS/PIS guard: 401 -> ConsentError (host re-supplies credentials;
+        # Navesti never refreshes). Other failures -> ProviderError.
         def guard_response!(response)
           return if response.success?
 
           raise ConsentError, "LHV rejected the access token (HTTP #{response.status})" if response.status == 401
 
+          raise_provider_error!(response)
+        end
+
+        # OAuth guard: OAuth errors carry an `error` field on both 400 and 401,
+        # so surface it rather than masking 401 as a ConsentError.
+        def guard_oauth_response!(response)
+          return if response.success?
+
+          raise_provider_error!(response)
+        end
+
+        # Raises a typed, redaction-safe ProviderError from a failed response,
+        # preferring an in-body tppMessages code or OAuth `error`.
+        def raise_provider_error!(response)
           body = safe_json(response)
           if body.is_a?(Hash)
             err = (body["tppMessages"] || []).find { |m| m["category"] == "ERROR" }
