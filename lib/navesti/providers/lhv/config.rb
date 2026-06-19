@@ -67,21 +67,23 @@ module Navesti
         end
 
         # Resolves a HATEOAS href to a full URL, **pinned to the configured
-        # origin**. A leading-slash path is resolved against root; an absolute
-        # URL is allowed only if its scheme/host/port match root. Anything else
-        # raises UnsafeUrlError — so a bank-supplied or tampered link can never
-        # redirect a credentialed (mTLS + Bearer) request to another host
-        # (SSRF / token exfiltration). Reuse this for any followed link.
+        # origin AND the PSD2 API root path**. A leading-slash path resolves
+        # against root; any URL is then allowed only if its scheme/host/port
+        # match root and its path is under root's path (e.g. /psd2). Otherwise
+        # UnsafeUrlError — so a bank-supplied or tampered link can never redirect
+        # a credentialed request off-origin (SSRF / token exfiltration), nor a
+        # browser redirect to an arbitrary page. Reuse for every actionable link.
         def absolute(href)
           s = href.to_s.strip
           raise UnsafeUrlError, "empty URL" if s.empty?
           raise UnsafeUrlError, "refusing protocol-relative URL" if s.start_with?("//")
-          return "#{root}#{s}" if s.start_with?("/")
+          raise UnsafeUrlError, "refusing path traversal" if s.include?("..")
 
-          uri = parse_uri(s)
-          return s if same_origin?(uri)
+          url = s.start_with?("/") ? "#{root}#{s}" : s
+          uri = parse_uri(url)
+          raise UnsafeUrlError, "refusing URL outside the configured API root" unless allowed_root?(uri)
 
-          raise UnsafeUrlError, "refusing to follow off-origin URL (expected origin #{origin_of(root)})"
+          url
         end
 
         # --- PIS JSON (v1.1) ---
@@ -114,14 +116,16 @@ module Navesti
           raise UnsafeUrlError, "invalid URL"
         end
 
-        def same_origin?(uri)
+        # Same origin (scheme/host/port) AND path under the configured root path.
+        def allowed_root?(uri)
           root_uri = URI.parse(root)
-          uri.scheme == root_uri.scheme && uri.host == root_uri.host && uri.port == root_uri.port
-        end
+          return false unless uri.scheme == root_uri.scheme &&
+                              uri.host == root_uri.host &&
+                              uri.port == root_uri.port
 
-        def origin_of(url)
-          u = URI.parse(url)
-          "#{u.scheme}://#{u.host}"
+          path = uri.path.to_s
+          base = root_uri.path.to_s # e.g. "/psd2"
+          base.empty? || path == base || path.start_with?("#{base}/")
         end
       end
     end

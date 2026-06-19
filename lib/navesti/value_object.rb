@@ -75,15 +75,25 @@ module Navesti
     # Subclasses override to add semantic validation (raise ValidationError).
     def validate; end
 
-    # Freezes the instance and each top-level attribute value. Shallow by
-    # design: nested structures inside `raw` (arbitrary provider payloads) are
-    # not recursively frozen — deep-freezing unbounded payloads isn't worth the
-    # cost, and `raw` is documented as evidence, never read back out of.
+    # Freezes the instance and recursively freezes each attribute value, so
+    # preserved `raw` evidence (nested provider JSON hashes/arrays) is truly
+    # immutable after construction — audit integrity, not just a frozen top
+    # level. Provider responses are small, so the recursion cost is negligible.
     def freeze_attributes
       self.class.attributes.each_key do |name|
-        instance_variable_get("@#{name}").freeze
+        deep_freeze(instance_variable_get("@#{name}"))
       end
       freeze
+    end
+
+    def deep_freeze(value)
+      case value
+      when Hash
+        value.each { |k, v| deep_freeze(k); deep_freeze(v) }
+      when Array
+        value.each { |v| deep_freeze(v) }
+      end
+      value.freeze
     end
   end
 end

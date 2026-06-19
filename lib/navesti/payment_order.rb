@@ -14,10 +14,14 @@ module Navesti
     attribute :creditor_name
     attribute :rail, default: :sepa_credit_transfer
     attribute :remittance_information, required: false
+    # Preserved for the host's reconciliation but NOT transmitted to LHV — its
+    # JSON SEPA schema has no end-to-end identification field (docs/12).
     attribute :end_to_end_reference, required: false
     attribute :requested_execution_date, required: false
-    # Connector-level idempotency key, supplied by the host. Opaque to Navesti;
-    # forwarded to the bank only where the dialect declares support.
+    # Connector-level idempotency key, supplied by the host. For LHV it is
+    # mapped to a deterministic, bank-visible X-Request-ID on payment initiation
+    # so retries correlate; LHV's API guarantees no bank-side dedup, so the host
+    # MUST reconcile via payment status after an ambiguous outcome (docs/08).
     attribute :idempotency_key, required: false
 
     private

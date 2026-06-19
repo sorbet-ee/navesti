@@ -44,6 +44,14 @@ module Navesti
         AVAILABLE_BALANCE_TYPES = %w[interimAvailable forwardAvailable expected authorised].freeze
         BOOKED_BALANCE_TYPES    = %w[closingBooked interimBooked openingBooked].freeze
 
+        # Deterministic, well-established SEPA constraints we can enforce
+        # host-side before dialing the bank. Charset, IBAN checksum, and date
+        # rules are intentionally NOT enforced here (false-rejection risk); the
+        # bank enforces those. See docs/12 / swagger-notes.
+        CREDITOR_NAME_MAX = 70   # SEPA creditor name
+        REMITTANCE_MAX    = 140  # SEPA unstructured remittance
+        SEPA_RAILS        = %i[sepa_credit_transfer sepa_instant].freeze
+
         module_function
 
         # Normalizes an LHV transactionStatus into a PaymentStatus, preserving
@@ -68,6 +76,24 @@ module Navesti
 
         def access(access_string)
           ACCESS.fetch(access_string.to_s, :unknown)
+        end
+
+        # Validates a PaymentOrder against the SEPA constraints LHV enforces,
+        # raising ValidationError before any bank call. Deterministic only —
+        # not a substitute for bank-side validation, but it turns predictable
+        # user errors into clear local failures instead of bank rejections.
+        def validate_payment_order!(order)
+          if SEPA_RAILS.include?(order.rail) && order.money.currency != "EUR"
+            raise ValidationError, "LHV SEPA requires EUR, got #{order.money.currency}"
+          end
+          if order.creditor_name.to_s.length > CREDITOR_NAME_MAX
+            raise ValidationError, "creditorName exceeds the SEPA #{CREDITOR_NAME_MAX}-char limit"
+          end
+          if order.remittance_information.to_s.length > REMITTANCE_MAX
+            raise ValidationError, "remittanceInformationUnstructured exceeds the SEPA #{REMITTANCE_MAX}-char limit"
+          end
+
+          order
         end
 
         def available_balance_type?(type)

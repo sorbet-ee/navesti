@@ -40,6 +40,25 @@ RSpec.describe Navesti::Providers::LHV::Config do
       expect { config.absolute("//evil.com/x") }.to raise_error(Navesti::UnsafeUrlError)
     end
 
+    it "rejects a same-origin URL outside the PSD2 API root path" do
+      expect { config.absolute("https://api.sandbox.lhv.eu/some-other-path") }
+        .to raise_error(Navesti::UnsafeUrlError)
+    end
+
+    it "rejects a root-prefix look-alike path (/psd2evil)" do
+      expect { config.absolute("https://api.sandbox.lhv.eu/psd2evil/x") }
+        .to raise_error(Navesti::UnsafeUrlError)
+    end
+
+    it "rejects path traversal" do
+      expect { config.absolute("/psd2/../evil") }.to raise_error(Navesti::UnsafeUrlError)
+    end
+
+    it "allows the bank's SCA UI path under the root (psd2/ui/...)" do
+      url = "#{root}/ui/v2/payment/sepa/abc"
+      expect(config.absolute(url)).to eq(url)
+    end
+
     it "never echoes the offending URL (it may carry a token)" do
       url = "https://evil.com/cb?code=super-secret-code"
       expect { config.absolute(url) }

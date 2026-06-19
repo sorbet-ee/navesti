@@ -3,6 +3,7 @@
 require "net/http"
 require "uri"
 require "openssl"
+require "timeout"
 
 module Navesti
   module HTTP
@@ -21,6 +22,21 @@ module Navesti
     class Client
       DEFAULT_OPEN_TIMEOUT = 10
       DEFAULT_READ_TIMEOUT = 30
+
+      # Failures that provably occur BEFORE the request is written → no side
+      # effect (safe to retry).
+      SAFE_BEFORE_SEND = [
+        OpenSSL::SSL::SSLError, Net::OpenTimeout,
+        Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, SocketError
+      ].freeze
+
+      # Failures that may occur AFTER the request is written, or are ambiguous →
+      # the bank may have acted (unsafe to retry blindly). SystemCallError is the
+      # catch-all for ECONNRESET / EPIPE / ECONNABORTED and other Errno.
+      UNCERTAIN_AFTER_SEND = [
+        Net::ReadTimeout, Net::WriteTimeout, Timeout::Error,
+        EOFError, IOError, Net::HTTPBadResponse, SystemCallError
+      ].freeze
 
       def initialize(open_timeout: DEFAULT_OPEN_TIMEOUT, read_timeout: DEFAULT_READ_TIMEOUT)
         @open_timeout = open_timeout
@@ -42,25 +58,30 @@ module Navesti
         uri = URI.parse(url)
         http = build_http(uri, credentials)
         req = build_request(method, uri, headers, body)
-
-        response = http.request(req)
-        Response.new(
-          status: response.code.to_i,
-          headers: response.to_hash,
-          body: response.body
-        )
-      rescue OpenSSL::SSL::SSLError => e
-        # TLS handshake failed → request never completed; safe side.
-        raise TransportError.new("TLS error: #{e.message}", side_effect_possible: false)
-      rescue Net::OpenTimeout, Errno::ECONNREFUSED, SocketError => e
-        # Failed before the request was written → no side effect.
-        raise TransportError.new("connection failed: #{e.message}", side_effect_possible: false)
-      rescue Net::ReadTimeout, Net::WriteTimeout => e
-        # Request may have reached the bank → unsafe; assume side effect.
-        raise TransportError.new("timeout: #{e.message}", side_effect_possible: true)
+        perform(http, req)
       end
 
       private
+
+      def perform(http, req)
+        response = http.request(req)
+        Response.new(status: response.code.to_i, headers: response.to_hash, body: response.body)
+      rescue *SAFE_BEFORE_SEND, *UNCERTAIN_AFTER_SEND => e
+        raise transport_error(e)
+      end
+
+      # Classifies a transport exception. side_effect_possible is false ONLY when
+      # the failure provably occurred before the request was written; every
+      # after-write or ambiguous failure is true (conservative for PIS retry
+      # safety). The message carries the exception class only — never a raw
+      # message that could contain a URL.
+      def transport_error(error)
+        if SAFE_BEFORE_SEND.any? { |klass| error.is_a?(klass) }
+          TransportError.new("connection failed before send (#{error.class})", side_effect_possible: false)
+        else
+          TransportError.new("transport uncertain after send (#{error.class})", side_effect_possible: true)
+        end
+      end
 
       def build_http(uri, credentials)
         http = Net::HTTP.new(uri.host, uri.port)

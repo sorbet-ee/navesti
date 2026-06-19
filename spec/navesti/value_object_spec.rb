@@ -35,4 +35,15 @@ RSpec.describe Navesti::ValueObject do
     ref = Navesti::AccountRef.new(iban: "EE717700771001735865")
     expect(ref.currency).to be_nil
   end
+
+  it "deeply freezes nested raw evidence (audit immutability)" do
+    acct = Navesti::Account.new(
+      provider: "lhv", provider_account_id: "a-1",
+      raw: { account: { "resourceId" => "a-1", "tags" => ["x"] } }
+    )
+    expect(acct.raw).to be_frozen
+    expect(acct.raw[:account]).to be_frozen
+    expect(acct.raw[:account]["tags"]).to be_frozen
+    expect { acct.raw[:account]["resourceId"] = "changed" }.to raise_error(FrozenError)
+  end
 end

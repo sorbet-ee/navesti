@@ -3,6 +3,7 @@
 require "json"
 require "uri"
 require "securerandom"
+require "digest"
 
 module Navesti
   module Providers
@@ -132,6 +133,8 @@ module Navesti
         # PaymentSubmission: a redirect interaction when SCA is required, or a
         # confirmed status when an SCA exemption applied (no scaRedirect).
         def initiate_sepa_payment(order:, access_token:, redirect_uri:, nok_redirect_uri: nil, psu_corporate_id: nil)
+          Dialect.validate_payment_order!(order) # local SEPA checks before dialing
+
           headers = bearer_headers(access_token).merge(
             "Content-Type" => "application/json",
             "TPP-Redirect-Preferred" => "true",
@@ -139,6 +142,15 @@ module Navesti
           )
           headers["TPP-Nok-Redirect-URI"] = nok_redirect_uri if nok_redirect_uri
           headers["PSU-Corporate-ID"] = psu_corporate_id if psu_corporate_id
+          # Stable, bank-visible correlation id derived from the host's
+          # idempotency key, so a retry reuses the same X-Request-ID. NOTE: LHV's
+          # JSON SEPA API documents NO idempotency mechanism — this provides
+          # correlation (and dedup only if LHV rejects duplicate request ids),
+          # NOT a guarantee. After an ambiguous outcome the host MUST reconcile
+          # via payment status before retrying (docs/08, docs/12).
+          if order.idempotency_key
+            headers["X-Request-ID"] = self.class.deterministic_request_id(order.idempotency_key)
+          end
 
           response = @http.request(
             method: :post,
@@ -148,7 +160,18 @@ module Navesti
             credentials: credentials
           )
           guard_response!(response)
-          Mappers.payment_submission(response, idempotency_key: order.idempotency_key)
+          Mappers.payment_submission(response, config: config, idempotency_key: order.idempotency_key)
+        end
+
+        # RFC 4122 v5 UUID derived from a fixed namespace + seed, so the same
+        # idempotency key always yields the same X-Request-ID across retries.
+        def self.deterministic_request_id(seed)
+          digest = Digest::SHA1.digest("navesti-lhv-idempotency\x00#{seed}")
+          bytes = digest[0, 16].bytes
+          bytes[6] = (bytes[6] & 0x0f) | 0x50 # version 5
+          bytes[8] = (bytes[8] & 0x3f) | 0x80 # variant 10xx
+          hex = bytes.map { |b| format("%02x", b) }.join
+          "#{hex[0, 8]}-#{hex[8, 4]}-#{hex[12, 4]}-#{hex[16, 4]}-#{hex[20, 12]}"
         end
 
         # GET /v1.1/payments/sepa-credit-transfers/{paymentId}/status
@@ -209,6 +232,12 @@ module Navesti
         # The Berlin Group / LHV SEPA JSON body. amount_minor -> decimal string
         # via the currency exponent (never *100); debtorAccount is included
         # (optional at LHV, required by our Phase 1 PaymentOrder).
+        #
+        # NOTE: order.end_to_end_reference is intentionally NOT sent — LHV's
+        # documented JSON SEPA schema has no endToEndIdentification field (its
+        # remittanceInformationStructured is a different concept, the Estonian
+        # creditor reference). It is preserved on the order for the host's own
+        # reconciliation. Revisit if LHV confirms support (docs/12).
         def payment_body(order)
           body = {
             "instructedAmount" => {

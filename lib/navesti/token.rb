@@ -22,6 +22,27 @@ module Navesti
     end
     alias to_s inspect
 
+    # Redacted by default: #to_h is exactly what apps log, serialize, and pass
+    # to background jobs, so it must never carry token material. The typed
+    # #access_token / #refresh_token readers still return the real values for
+    # the host that needs them; use #to_secret_h for deliberate secure handling.
+    # (Consequence: Token equality compares non-secret metadata only.)
+    def to_h
+      super.merge(
+        access_token: Redaction::MASK,
+        refresh_token: refresh_token && Redaction::MASK
+      )
+    end
+
+    # The real token values — for deliberate, secure persistence only. Never log.
+    def to_secret_h
+      {
+        access_token: access_token, refresh_token: refresh_token,
+        token_type: token_type, expires_in: expires_in,
+        scope: scope, obtained_at: obtained_at
+      }
+    end
+
     private
 
     def validate

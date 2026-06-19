@@ -486,6 +486,109 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
     end
   end
 
+  # --- bank link validation (review #1 / #7) ---
+
+  describe "bank link validation" do
+    it "drops an off-origin scaRedirect but still returns the initiated submission" do
+      resp = FakeHTTPClient.json_response(status: 201, body: {
+        "transactionStatus" => "RCVD", "paymentId" => "p-evil",
+        "_links" => {
+          "scaRedirect" => { "href" => "https://evil.com/phish" },
+          "status" => { "href" => "/v1.1/payments/sepa-credit-transfers/p-evil/status" }
+        }
+      })
+      a, = adapter(resp)
+      sub = a.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+
+      expect(sub.provider_reference.value).to eq("p-evil") # payment not discarded
+      expect(sub.interaction).to be_nil                     # phishing redirect not surfaced
+      expect(sub.safety_status).to eq(:pending)
+    end
+
+    it "absolutizes a safe relative status link to a full on-origin URL" do
+      a, = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+      sub = a.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+      expect(sub.status_url).to start_with("https://api.sandbox.lhv.eu/psd2/")
+      expect(sub.status_url).to include("/status")
+    end
+  end
+
+  # --- idempotency correlation (review #3) ---
+
+  describe "idempotency correlation" do
+    it "derives a stable X-Request-ID from the order idempotency_key" do
+      a1, h1 = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+      a2, h2 = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+      a1.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+      a2.initiate_sepa_payment(order: order, access_token: "tok", redirect_uri: "https://host/ok")
+
+      id1 = h1.last_request[:headers]["X-Request-ID"]
+      id2 = h2.last_request[:headers]["X-Request-ID"]
+      expect(id1).to eq(id2)                    # same key -> same id across calls
+      expect(id1).to match(/\A[0-9a-f-]{36}\z/) # UUID shape
+      expect(id1).not_to eq("fixed-request-id")
+    end
+
+    it "falls back to the random request id when no idempotency_key is present" do
+      no_key = Navesti::PaymentOrder.new(
+        money: Navesti::Money.new(amount_minor: 100, currency: "EUR"),
+        debtor: Navesti::AccountRef.iban("EE717700771001735865"),
+        creditor: Navesti::AccountRef.iban("EE857700771001735904"),
+        creditor_name: "Donald Duck"
+      )
+      a, http = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+      a.initiate_sepa_payment(order: no_key, access_token: "tok", redirect_uri: "https://host/ok")
+      expect(http.last_request[:headers]["X-Request-ID"]).to eq("fixed-request-id")
+    end
+  end
+
+  # --- end-to-end reference is intentionally not transmitted (review #6) ---
+
+  it "does not transmit end_to_end_reference (LHV JSON SEPA has no such field)" do
+    o = order.with(end_to_end_reference: "E2E-12345")
+    a, http = adapter(Fixtures.lhv_response("payment_rcvd", status: 201))
+    a.initiate_sepa_payment(order: o, access_token: "tok", redirect_uri: "https://host/ok")
+    body = http.last_request[:body]
+    expect(body).not_to include("E2E-12345")
+    expect(body).not_to include("endToEnd")
+  end
+
+  # --- SEPA validation before dialing (review #8) ---
+
+  describe "SEPA validation" do
+    def bad_order(**over)
+      base = {
+        money: Navesti::Money.new(amount_minor: 100, currency: "EUR"),
+        debtor: Navesti::AccountRef.iban("EE717700771001735865"),
+        creditor: Navesti::AccountRef.iban("EE857700771001735904"),
+        creditor_name: "Donald Duck"
+      }
+      Navesti::PaymentOrder.new(**base.merge(over))
+    end
+
+    it "rejects a non-EUR SEPA payment before sending anything" do
+      a, http = adapter
+      order = bad_order(money: Navesti::Money.new(amount_minor: 100, currency: "USD"))
+      expect { a.initiate_sepa_payment(order: order, access_token: "t", redirect_uri: "x") }
+        .to raise_error(Navesti::ValidationError, /EUR/)
+      expect(http.requests).to be_empty
+    end
+
+    it "rejects an over-long creditor name (SEPA 70)" do
+      a, = adapter
+      expect do
+        a.initiate_sepa_payment(order: bad_order(creditor_name: "x" * 71), access_token: "t", redirect_uri: "x")
+      end.to raise_error(Navesti::ValidationError, /creditorName/)
+    end
+
+    it "rejects over-long remittance (SEPA 140)" do
+      a, = adapter
+      expect do
+        a.initiate_sepa_payment(order: bad_order(remittance_information: "y" * 141), access_token: "t", redirect_uri: "x")
+      end.to raise_error(Navesti::ValidationError, /remittance/)
+    end
+  end
+
   # --- transport error propagation ---
 
   describe "transport failures" do

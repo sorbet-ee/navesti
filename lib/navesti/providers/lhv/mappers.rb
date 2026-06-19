@@ -124,7 +124,13 @@ module Navesti
         end
 
         # POST /v1.1/payments/sepa-credit-transfers → Navesti::PaymentSubmission
-        def payment_submission(response, idempotency_key: nil)
+        #
+        # All bank-supplied actionable links (scaRedirect, status, authorisation)
+        # are validated through config.absolute (origin + API-root pinned). An
+        # unsafe link is DROPPED, not raised — the payment was already initiated,
+        # so we still return the submission (paymentId + status); the raw href
+        # stays in evidence. Never hand the host an unvalidated redirect URL.
+        def payment_submission(response, config:, idempotency_key: nil)
           body = response.json
           reject_on_error!(body)
 
@@ -141,9 +147,9 @@ module Navesti
           PaymentSubmission.new(
             status: status,
             provider_reference: provider_reference,
-            interaction: sca_interaction(links, provider_reference, response),
-            status_url: link_href(links, "status"),
-            authorisation_url: link_href(links, "startAuthorisationWithAuthenticationMethodSelection"),
+            interaction: sca_interaction(links, provider_reference, config),
+            status_url: safe_link(config, link_href(links, "status")),
+            authorisation_url: safe_link(config, link_href(links, "startAuthorisationWithAuthenticationMethodSelection")),
             sca_methods: sca_methods(body),
             idempotency_key: idempotency_key,
             submitted_at: Time.now.utc.iso8601,
@@ -217,11 +223,13 @@ module Navesti
           end
         end
 
-        # Redirect SCA is offered when _links.scaRedirect is present. Its
-        # absence on an ACSC response means an SCA exemption applied (the
-        # payment is already confirmed) → no interaction.
-        def sca_interaction(links, provider_reference, response)
-          href = link_href(links, "scaRedirect")
+        # Redirect SCA is offered when _links.scaRedirect is present and passes
+        # origin/root validation. Its absence (or an unsafe URL) means no
+        # interaction is surfaced — on an ACSC exemption that is expected (the
+        # payment is already confirmed); on an unsafe URL the host falls back to
+        # status polling rather than being handed a phishing redirect.
+        def sca_interaction(links, provider_reference, config)
+          href = safe_link(config, link_href(links, "scaRedirect"))
           return nil if href.nil?
 
           Interaction.new(
@@ -230,6 +238,17 @@ module Navesti
             provider_reference: provider_reference,
             raw: { links: links, captured_at: Time.now.utc.iso8601 }
           )
+        end
+
+        # Validates a bank-supplied actionable link, returning the safe absolute
+        # URL or nil when it fails origin/root validation. Never raises — an
+        # already-initiated payment must not be discarded over a bad link.
+        def safe_link(config, href)
+          return nil if href.nil?
+
+          config.absolute(href)
+        rescue UnsafeUrlError
+          nil
         end
 
         def link_href(links, name)
