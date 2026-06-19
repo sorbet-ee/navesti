@@ -37,11 +37,16 @@ LHV_CA_CHAIN_PATH=../../certs/lhv_sandbox_chain.pem bundle exec rackup -p 9292
 Then open <http://localhost:9292>. The default `redirect_uri` is
 `http://localhost:9292/oauth/callback` (override with `LHV_WEBAPP_REDIRECT_URI`).
 
-The Authentication form comes **prefilled with the documented sandbox PSU**
-(`Liis-MariMnnik`) and PSU-Corporate-ID (`EE47101010033`), so you can click
-straight through to accounts/balances/payment without the OAuth dance. There is
-no API password — the SCA PIN (`0000`, any 4 digits) is entered on LHV's own
-login page, not by this app; the field is shown read-only for reference.
+**Authenticate via OAuth** (the primary button): you're redirected to LHV's
+login, sign in as PSU `Liis-MariMnnik` with the sandbox PIN calculator (any 4
+digits, e.g. `0000`), and the callback exchanges the code for a token tied to
+**your** TPP certificate. There is no API password — login/SCA happens on LHV's
+page, not in this app.
+
+> The documented preset bearer tokens (`Liis-MariMnnik`, `Donaldduck`) are bound
+> to LHV's *built-in Swagger certificate* (`PSDEE-LHVTEST-01AAA`), so they return
+> `TOKEN_UNKNOWN` with your own registered cert. They're tucked behind a
+> "…or use a preset" disclosure for completeness, but OAuth is the real path.
 
 ## Flow
 

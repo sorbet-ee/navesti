@@ -62,6 +62,11 @@ class NavestiLhvHarness < Roda
     return warn_offline unless live?
 
     yield
+  rescue Navesti::ConsentError => e
+    # 401 — most commonly the preset token not matching our TPP. Point to OAuth.
+    err("#{e.message}. Preset sandbox tokens are bound to LHV's built-in Swagger " \
+        "certificate, so they return TOKEN_UNKNOWN for your own TPP. Authenticate " \
+        "with 'Start OAuth' above to get a token tied to your certificate.")
   rescue Navesti::Error => e
     err(e.message) # already redaction-safe via Navesti::Error
   end
@@ -256,17 +261,17 @@ class NavestiLhvHarness < Roda
         <button hx-post="/revoke" hx-target="#pis-result">Revoke token</button>
         <button hx-post="/forget-token" hx-target="#auth-status" hx-swap="outerHTML">Forget token</button></div>)
     else
-      %(<div id="auth-status">#{notice('Not authenticated — sandbox PSU prefilled below.', kind: 'warn')}
-        <form hx-post="/use-preset" hx-target="#auth-status" hx-swap="outerHTML">
-          <label>PSU username <input name="preset" value="#{h(SANDBOX_PSU)}" size="16"></label>
-          <label>PSU-Corporate-ID <input name="corporate_id" value="#{h(SANDBOX_CORPORATE_ID)}" size="15"></label>
-          <label title="Entered on LHV's own login page (sandbox PIN calculator) — never sent by this app.">
-            SCA PIN <input name="pin" value="0000" size="6" readonly></label>
-          <button type="submit">Use sandbox PSU</button>
-        </form>
-        <p class="muted">The sandbox PSU bearer is documented public test data. There is no API password:
-        real login/SCA happens on LHV's page, and the sandbox uses the PIN calculator (any 4 digits).</p>
-        <a class="btn" href="/oauth/start">…or Start real OAuth (redirect to LHV)</a></div>)
+      %(<div id="auth-status">#{notice('Not authenticated.', kind: 'warn')}
+        <p><b>With your own TPP certificate, authenticate via OAuth.</b> At LHV's login use the
+        PSU <code>#{h(SANDBOX_PSU)}</code> and the sandbox PIN calculator (any 4 digits, e.g. 0000).</p>
+        <a class="btn" href="/oauth/start">Start OAuth (redirect to LHV)</a>
+        <details style="margin-top:.6rem"><summary class="muted">…or use a preset bearer token (only works with LHV's built-in Swagger certificate — returns TOKEN_UNKNOWN for your own TPP)</summary>
+          <form hx-post="/use-preset" hx-target="#auth-status" hx-swap="outerHTML" style="margin-top:.4rem">
+            <label>PSU bearer <input name="preset" value="#{h(SANDBOX_PSU)}" size="16"></label>
+            <label>PSU-Corporate-ID <input name="corporate_id" value="#{h(SANDBOX_CORPORATE_ID)}" size="15"></label>
+            <button type="submit">Use preset</button>
+          </form>
+        </details></div>)
     end
   end
 
