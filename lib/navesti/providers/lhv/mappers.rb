@@ -86,6 +86,10 @@ module Navesti
           captured_at = Time.now.utc.iso8601
 
           entries.group_by { |e| e.dig("balanceAmount", "currency") }.map do |currency, group|
+            if currency.nil?
+              raise MappingError.new("balance entry missing balanceAmount.currency", field: :currency)
+            end
+
             available = pick_balance(group, currency) { |t| Dialect.available_balance_type?(t) }
             booked    = pick_balance(group, currency) { |t| Dialect.booked_balance_type?(t) }
 
@@ -156,7 +160,7 @@ module Navesti
         # status. Failure (e.g. SCA already done) surfaces via guard as an error.
         def cancellation(response, payment_id:)
           ref = payment_reference(payment_id)
-          body = response.body.to_s.strip.empty? ? nil : safe_parse(response)
+          body = response.body.to_s.strip.empty? ? nil : response.json_or_nil
           raw_status = body.is_a?(Hash) ? body["transactionStatus"] : nil
 
           if raw_status
@@ -211,13 +215,6 @@ module Navesti
               name: m["name"]
             )
           end
-        end
-
-        # Parses a body, returning nil instead of raising (for tolerant paths).
-        def safe_parse(response)
-          response.json
-        rescue MappingError
-          nil
         end
 
         # Redirect SCA is offered when _links.scaRedirect is present. Its

@@ -70,6 +70,7 @@ module Navesti
         if uri.scheme == "https"
           http.use_ssl = true
           http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+          http.min_version = OpenSSL::SSL::TLS1_2_VERSION # no legacy TLS downgrade
           apply_mtls(http, credentials) if credentials
         end
         http

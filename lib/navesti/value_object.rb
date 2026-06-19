@@ -47,7 +47,7 @@ module Navesti
       end
 
       validate
-      deep_freeze
+      freeze_attributes
     end
 
     # Returns a new instance with the given attributes replaced.
@@ -75,7 +75,11 @@ module Navesti
     # Subclasses override to add semantic validation (raise ValidationError).
     def validate; end
 
-    def deep_freeze
+    # Freezes the instance and each top-level attribute value. Shallow by
+    # design: nested structures inside `raw` (arbitrary provider payloads) are
+    # not recursively frozen — deep-freezing unbounded payloads isn't worth the
+    # cost, and `raw` is documented as evidence, never read back out of.
+    def freeze_attributes
       self.class.attributes.each_key do |name|
         instance_variable_get("@#{name}").freeze
       end

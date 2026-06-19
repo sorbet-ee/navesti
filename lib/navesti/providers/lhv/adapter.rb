@@ -254,7 +254,7 @@ module Navesti
         # Raises a typed, redaction-safe ProviderError from a failed response,
         # preferring an in-body tppMessages code or OAuth `error`.
         def raise_provider_error!(response)
-          body = safe_json(response)
+          body = response.json_or_nil
           if body.is_a?(Hash)
             err = (body["tppMessages"] || []).find { |m| m["category"] == "ERROR" }
             if err
@@ -272,12 +272,6 @@ module Navesti
           end
 
           raise ProviderError.new("LHV request failed (HTTP #{response.status})", http_status: response.status)
-        end
-
-        def safe_json(response)
-          response.json
-        rescue MappingError
-          nil
         end
       end
     end

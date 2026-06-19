@@ -32,6 +32,14 @@ module Navesti
         raise MappingError, "response body is not valid JSON: #{e.message}"
       end
 
+      # Parses the body as JSON, returning nil instead of raising — for tolerant
+      # paths (error guards, possibly-empty responses).
+      def json_or_nil
+        json
+      rescue MappingError
+        nil
+      end
+
       private
 
       def normalize_headers(headers)

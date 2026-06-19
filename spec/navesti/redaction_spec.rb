@@ -37,13 +37,4 @@ RSpec.describe Navesti::Redaction do
       expect(err.message).not_to include("leak-me-token")
     end
   end
-
-  describe ".redacted_hash" do
-    it "masks sensitive keys" do
-      h = described_class.redacted_hash(access_token: "x", scope: "psd2", client_key: "y")
-      expect(h[:access_token]).to eq("[REDACTED]")
-      expect(h[:client_key]).to eq("[REDACTED]")
-      expect(h[:scope]).to eq("psd2")
-    end
-  end
 end

@@ -49,20 +49,5 @@ module Navesti
       end
       out
     end
-
-    # Returns a shallow copy of +hash+ with sensitive keys masked. Used by
-    # #inspect on credential-bearing objects.
-    def redacted_hash(hash)
-      hash.each_with_object({}) do |(k, v), acc|
-        acc[k] = sensitive_key?(k) ? MASK : v
-      end
-    end
-
-    def sensitive_key?(key)
-      name = key.to_s.downcase
-      SENSITIVE_KEYS.any? { |s| name == s.downcase } ||
-        name.include?("secret") || name.include?("token") ||
-        name.include?("password") || name.end_with?("_key")
-    end
   end
 end

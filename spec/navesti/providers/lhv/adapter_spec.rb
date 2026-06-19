@@ -339,6 +339,15 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
         .to raise_error(Navesti::ConsentError)
     end
 
+    it "raises a clean MappingError (not a VO ValidationError) on a currency-less entry" do
+      resp = FakeHTTPClient.json_response(body: {
+        "balances" => [{ "balanceAmount" => { "amount" => "1.00" }, "balanceType" => "interimAvailable" }]
+      })
+      a, = adapter(resp)
+      expect { a.balances(access_token: "tok", account_id: "acc-1") }
+        .to raise_error(Navesti::MappingError, /currency/)
+    end
+
     it "refuses an off-origin balances_href before sending credentials anywhere" do
       a, http = adapter # no responses queued
       expect do
