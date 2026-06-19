@@ -27,7 +27,8 @@ OPEN := $(shell command -v open >/dev/null 2>&1 && echo open || echo xdg-open)
 .PHONY: help setup test test-unit test-lhv test-live-lhv build install-local console clean \
         cert-check swagger-open lhv-tpp lhv-oauth-url lhv-oauth-manual lhv-oauth-firefox \
         lhv-token-exchange lhv-token-revoke lhv-accounts lhv-balances lhv-sepa-init \
-        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis webapp
+        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis \
+        webapp lhv-demo lhv_demo
 
 help: ## Show this help
 	@echo "Navesti developer commands:"
@@ -76,11 +77,16 @@ cert-check: ## Verify cert/key modulus match, extract TPP id, verify chain
 swagger-open: ## Open LHV sandbox Swagger in the browser
 	$(OPEN) "$(SWAGGER_URL)"
 
-webapp: ## Run the LHV connectivity web app and open it in the browser (sandbox-only)
+webapp: ## Run the LHV connectivity web app and open it in the browser (needs LHV_LIVE=1)
 	@$(require_live)
 	@echo "Launching LHV connectivity harness on http://localhost:$(WEBAPP_PORT) (LHV_ENV=$(LHV_ENV))"
 	@( sleep 2 && $(OPEN) "http://localhost:$(WEBAPP_PORT)" >/dev/null 2>&1 ) &
 	cd tools/webapp && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec rackup -p $(WEBAPP_PORT)
+
+lhv-demo: ## Connectivity demo: launch the web app with LHV_LIVE=1 preset (sandbox)
+	@$(MAKE) --no-print-directory webapp LHV_LIVE=1
+
+lhv_demo: lhv-demo ## Alias for lhv-demo
 
 # --- LHV live calls (LHV_LIVE=1) ---
 
