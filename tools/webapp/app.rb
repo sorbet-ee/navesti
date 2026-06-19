@@ -23,7 +23,12 @@ require "cgi"
 class NavestiLhvHarness < Roda
   # Single-user, in-memory dev state. Tokens stay in this process and are never
   # serialized to a cookie or rendered to the page.
-  STATE = { token: nil, oauth_state: nil, accounts: [], last_payment_id: nil }
+  STATE = { token: nil, corporate_id: nil, oauth_state: nil, accounts: [], last_payment_id: nil }
+
+  # Documented LHV sandbox test data (public — not secrets). Prefilled in the
+  # form so connectivity can be tried with one click.
+  SANDBOX_PSU = "Liis-MariMnnik"
+  SANDBOX_CORPORATE_ID = "EE47101010033"
 
   # Fragments are built as plain strings (htmx swaps HTML), so no render/asset
   # plugins are needed — keeps the harness tiny.
@@ -89,9 +94,10 @@ class NavestiLhvHarness < Roda
       end
     end
 
-    # Auth: use a preset sandbox bearer token (no OAuth dance)
+    # Auth: use the prefilled sandbox PSU (bearer token), no OAuth dance
     r.post "use-preset" do
-      STATE[:token] = (r.params["preset"].to_s.empty? ? "Liis-MariMnnik" : r.params["preset"])
+      STATE[:token] = nilify(r.params["preset"]) || SANDBOX_PSU
+      STATE[:corporate_id] = nilify(r.params["corporate_id"])
       auth_status
     end
 
@@ -132,7 +138,9 @@ class NavestiLhvHarness < Roda
       guarded do
         next err("No access token — authenticate or use a preset token first.") unless token
 
-        STATE[:accounts] = self.class.adapter.accounts_list(access_token: token)
+        STATE[:accounts] = self.class.adapter.accounts_list(
+          access_token: token, psu_corporate_id: STATE[:corporate_id]
+        )
         accounts_table(STATE[:accounts])
       end
     end
@@ -160,7 +168,8 @@ class NavestiLhvHarness < Roda
 
           order = build_order(r.params)
           sub = self.class.adapter.initiate_sepa_payment(
-            order: order, access_token: token, redirect_uri: redirect_uri
+            order: order, access_token: token, redirect_uri: redirect_uri,
+            psu_corporate_id: STATE[:corporate_id]
           )
           STATE[:last_payment_id] = sub.provider_reference&.value
           submission_panel(sub)
@@ -243,13 +252,21 @@ class NavestiLhvHarness < Roda
 
   def auth_status
     if token
-      %(<div id="auth-status">#{notice('Token present (server-side, never shown).')}
+      %(<div id="auth-status">#{notice('Authenticated (token held server-side, never shown).')}
         <button hx-post="/revoke" hx-target="#pis-result">Revoke token</button>
         <button hx-post="/forget-token" hx-target="#auth-status" hx-swap="outerHTML">Forget token</button></div>)
     else
-      %(<div id="auth-status">#{notice('Not authenticated.', kind: 'warn')}
-        <a class="btn" href="/oauth/start">Start OAuth (redirect to LHV)</a>
-        <button hx-post="/use-preset" hx-target="#auth-status" hx-swap="outerHTML">Use sandbox preset (Liis-Mari)</button></div>)
+      %(<div id="auth-status">#{notice('Not authenticated — sandbox PSU prefilled below.', kind: 'warn')}
+        <form hx-post="/use-preset" hx-target="#auth-status" hx-swap="outerHTML">
+          <label>PSU username <input name="preset" value="#{h(SANDBOX_PSU)}" size="16"></label>
+          <label>PSU-Corporate-ID <input name="corporate_id" value="#{h(SANDBOX_CORPORATE_ID)}" size="15"></label>
+          <label title="Entered on LHV's own login page (sandbox PIN calculator) — never sent by this app.">
+            SCA PIN <input name="pin" value="0000" size="6" readonly></label>
+          <button type="submit">Use sandbox PSU</button>
+        </form>
+        <p class="muted">The sandbox PSU bearer is documented public test data. There is no API password:
+        real login/SCA happens on LHV's page, and the sandbox uses the PIN calculator (any 4 digits).</p>
+        <a class="btn" href="/oauth/start">…or Start real OAuth (redirect to LHV)</a></div>)
     end
   end
 

@@ -8,6 +8,16 @@ RUBY    ?= ruby
 BUNDLE  ?= bundle
 VERSION := $(shell $(RUBY) -Ilib -e 'require "navesti/version"; print Navesti::VERSION' 2>/dev/null)
 SWAGGER_URL := https://api.sandbox.lhv.eu/psd2/swagger-ui/index.html?configUrl=/psd2/documentation/api-docs/swagger-config
+WEBAPP_PORT ?= 9292
+
+# LHV sandbox defaults — used by every lhv-* target and the webapp, so you don't
+# have to pass the long env line. Override by exporting your own values. Paths
+# are absolute ($(CURDIR)) so they resolve regardless of a subprocess's CWD.
+LHV_ENV              ?= sandbox
+LHV_CLIENT_CERT_PATH ?= $(CURDIR)/certs/lhv_sandbox.crt
+LHV_CLIENT_KEY_PATH  ?= $(CURDIR)/certs/lhv_sandbox.key
+LHV_CA_CHAIN_PATH    ?= $(CURDIR)/certs/lhv_sandbox_chain.pem
+export LHV_ENV LHV_CLIENT_CERT_PATH LHV_CLIENT_KEY_PATH LHV_CA_CHAIN_PATH
 
 # Refuse live network calls unless explicitly enabled.
 require_live = test "$(LHV_LIVE)" = "1" || { echo "Refusing live LHV call. Set LHV_LIVE=1."; exit 1; }
@@ -66,9 +76,11 @@ cert-check: ## Verify cert/key modulus match, extract TPP id, verify chain
 swagger-open: ## Open LHV sandbox Swagger in the browser
 	$(OPEN) "$(SWAGGER_URL)"
 
-webapp: ## Run the LHV connectivity web app (tools/webapp; Roda+htmx, sandbox-only)
+webapp: ## Run the LHV connectivity web app and open it in the browser (sandbox-only)
 	@$(require_live)
-	cd tools/webapp && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec rackup -p $${PORT:-9292}
+	@echo "Launching LHV connectivity harness on http://localhost:$(WEBAPP_PORT) (LHV_ENV=$(LHV_ENV))"
+	@( sleep 2 && $(OPEN) "http://localhost:$(WEBAPP_PORT)" >/dev/null 2>&1 ) &
+	cd tools/webapp && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec rackup -p $(WEBAPP_PORT)
 
 # --- LHV live calls (LHV_LIVE=1) ---
 

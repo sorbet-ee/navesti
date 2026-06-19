@@ -15,20 +15,33 @@ descriptors. Building it here demonstrates the boundary; it doesn't cross it.
 
 ## Run
 
-```
-cd tools/webapp
-bundle install
+One command from the repo root — installs the webapp's deps on first run, opens
+the browser, and defaults the cert paths to `certs/lhv_sandbox.*`:
 
-LHV_LIVE=1 \
-LHV_ENV=sandbox \
-LHV_CLIENT_CERT_PATH=../../certs/lhv_sandbox.crt \
+```
+LHV_LIVE=1 make webapp
+```
+
+Override the port or cert paths if needed: `LHV_LIVE=1 WEBAPP_PORT=9300 make webapp`,
+or export your own `LHV_CLIENT_CERT_PATH` etc.
+
+Or run it directly:
+
+```
+cd tools/webapp && bundle install
+LHV_LIVE=1 LHV_CLIENT_CERT_PATH=../../certs/lhv_sandbox.crt \
 LHV_CLIENT_KEY_PATH=../../certs/lhv_sandbox.key \
-LHV_CA_CHAIN_PATH=../../certs/lhv_sandbox_chain.pem \
-bundle exec rackup -p 9292
+LHV_CA_CHAIN_PATH=../../certs/lhv_sandbox_chain.pem bundle exec rackup -p 9292
 ```
 
 Then open <http://localhost:9292>. The default `redirect_uri` is
 `http://localhost:9292/oauth/callback` (override with `LHV_WEBAPP_REDIRECT_URI`).
+
+The Authentication form comes **prefilled with the documented sandbox PSU**
+(`Liis-MariMnnik`) and PSU-Corporate-ID (`EE47101010033`), so you can click
+straight through to accounts/balances/payment without the OAuth dance. There is
+no API password — the SCA PIN (`0000`, any 4 digits) is entered on LHV's own
+login page, not by this app; the field is shown read-only for reference.
 
 ## Flow
 
