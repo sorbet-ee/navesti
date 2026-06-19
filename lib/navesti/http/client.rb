@@ -92,9 +92,23 @@ module Navesti
           http.use_ssl = true
           http.verify_mode = OpenSSL::SSL::VERIFY_PEER
           http.min_version = OpenSSL::SSL::TLS1_2_VERSION # no legacy TLS downgrade
+          http.cert_store = default_cert_store
           apply_mtls(http, credentials) if credentials
         end
         http
+      end
+
+      # A clean system-default trust store, set explicitly rather than relying
+      # on Net::HTTP's implicit default. On some OpenSSL builds (e.g. OpenSSL 3.5
+      # via Homebrew) the implicit default inherits a CRL-check flag and fails
+      # ALL server verification with "unable to get certificate CRL". This builds
+      # a fresh store from the system CA paths with default flags. The full chain
+      # is still verified against the system CAs; CRL/OCSP revocation checking is
+      # not performed (the common HTTP-client default — curl behaves the same).
+      def default_cert_store
+        store = OpenSSL::X509::Store.new
+        store.set_default_paths
+        store
       end
 
       def apply_mtls(http, credentials)

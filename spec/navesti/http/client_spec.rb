@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "net/http"
+require "uri"
 
 RSpec.describe Navesti::HTTP::Client do
   subject(:client) { described_class.new }
@@ -44,6 +45,18 @@ RSpec.describe Navesti::HTTP::Client do
       msg = classify(Errno::ECONNRESET.new("connection reset by peer 1.2.3.4")).message
       expect(msg).to include("ECONNRESET")
       expect(msg).not_to include("1.2.3.4")
+    end
+  end
+
+  describe "#build_http TLS setup" do
+    it "sets an explicit system-default cert store for https" do
+      # Net::HTTP's implicit default store inherits a CRL-check flag on some
+      # OpenSSL builds and fails ALL verification ("unable to get certificate
+      # CRL"); we set a clean store explicitly.
+      http = client.send(:build_http, URI("https://api.sandbox.lhv.eu/psd2/v1/x"), nil)
+      expect(http.use_ssl?).to be(true)
+      expect(http.verify_mode).to eq(OpenSSL::SSL::VERIFY_PEER)
+      expect(http.cert_store).to be_a(OpenSSL::X509::Store)
     end
   end
 
