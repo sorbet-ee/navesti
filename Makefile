@@ -17,7 +17,7 @@ OPEN := $(shell command -v open >/dev/null 2>&1 && echo open || echo xdg-open)
 .PHONY: help setup test test-unit test-lhv test-live-lhv build install-local console clean \
         cert-check swagger-open lhv-tpp lhv-oauth-url lhv-oauth-manual lhv-oauth-firefox \
         lhv-token-exchange lhv-token-revoke lhv-accounts lhv-balances lhv-sepa-init \
-        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis
+        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis webapp
 
 help: ## Show this help
 	@echo "Navesti developer commands:"
@@ -65,6 +65,10 @@ cert-check: ## Verify cert/key modulus match, extract TPP id, verify chain
 
 swagger-open: ## Open LHV sandbox Swagger in the browser
 	$(OPEN) "$(SWAGGER_URL)"
+
+webapp: ## Run the LHV connectivity web app (tools/webapp; Roda+htmx, sandbox-only)
+	@$(require_live)
+	cd tools/webapp && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec rackup -p $${PORT:-9292}
 
 # --- LHV live calls (LHV_LIVE=1) ---
 
