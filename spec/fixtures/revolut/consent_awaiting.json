@@ -1,0 +1,1 @@
+{ "Data": { "ConsentId": "rev-aac-111", "Status": "AwaitingAuthorisation", "Permissions": ["ReadAccountsBasic", "ReadBalances"] }, "Risk": {} }

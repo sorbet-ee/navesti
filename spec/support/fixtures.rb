@@ -23,4 +23,8 @@ module Fixtures
   def wise_response(name, status: 200)
     FakeHTTPClient.json_response(status: status, body: raw(:wise, name))
   end
+
+  def revolut_response(name, status: 200)
+    FakeHTTPClient.json_response(status: status, body: raw(:revolut, name))
+  end
 end

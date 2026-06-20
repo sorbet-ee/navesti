@@ -1,0 +1,13 @@
+{
+  "Data": {
+    "Account": [
+      {
+        "AccountId": "rev-acc-1", "Currency": "GBP", "AccountType": "Personal", "AccountSubType": "CurrentAccount",
+        "Account": [{ "SchemeName": "UK.OBIE.IBAN", "Identification": "GB33REVO00996912345678", "Name": "Finly GBP" }]
+      },
+      {
+        "AccountId": "rev-acc-2", "Currency": "EUR", "AccountType": "Personal", "AccountSubType": "CurrentAccount"
+      }
+    ]
+  }
+}

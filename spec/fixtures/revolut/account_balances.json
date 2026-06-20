@@ -1,0 +1,8 @@
+{
+  "Data": {
+    "Balance": [
+      { "AccountId": "rev-acc-1", "CreditDebitIndicator": "Credit", "Type": "InterimAvailable", "Amount": { "Amount": "250.00", "Currency": "GBP" } },
+      { "AccountId": "rev-acc-1", "CreditDebitIndicator": "Debit", "Type": "InterimBooked", "Amount": { "Amount": "5.50", "Currency": "GBP" } }
+    ]
+  }
+}
