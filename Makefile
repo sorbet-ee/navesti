@@ -8,6 +8,16 @@ RUBY    ?= ruby
 BUNDLE  ?= bundle
 VERSION := $(shell $(RUBY) -Ilib -e 'require "navesti/version"; print Navesti::VERSION' 2>/dev/null)
 SWAGGER_URL := https://api.sandbox.lhv.eu/psd2/swagger-ui/index.html?configUrl=/psd2/documentation/api-docs/swagger-config
+WEBAPP_PORT ?= 9292
+
+# LHV sandbox defaults — used by every lhv-* target and the webapp, so you don't
+# have to pass the long env line. Override by exporting your own values. Paths
+# are absolute ($(CURDIR)) so they resolve regardless of a subprocess's CWD.
+LHV_ENV              ?= sandbox
+LHV_CLIENT_CERT_PATH ?= $(CURDIR)/certs/lhv_sandbox.crt
+LHV_CLIENT_KEY_PATH  ?= $(CURDIR)/certs/lhv_sandbox.key
+LHV_CA_CHAIN_PATH    ?= $(CURDIR)/certs/lhv_sandbox_chain.pem
+export LHV_ENV LHV_CLIENT_CERT_PATH LHV_CLIENT_KEY_PATH LHV_CA_CHAIN_PATH
 
 # Refuse live network calls unless explicitly enabled.
 require_live = test "$(LHV_LIVE)" = "1" || { echo "Refusing live LHV call. Set LHV_LIVE=1."; exit 1; }
@@ -17,7 +27,8 @@ OPEN := $(shell command -v open >/dev/null 2>&1 && echo open || echo xdg-open)
 .PHONY: help setup test test-unit test-lhv test-live-lhv build install-local console clean \
         cert-check swagger-open lhv-tpp lhv-oauth-url lhv-oauth-manual lhv-oauth-firefox \
         lhv-token-exchange lhv-token-revoke lhv-accounts lhv-balances lhv-sepa-init \
-        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis
+        lhv-sepa-auth-firefox lhv-sepa-status lhv-sepa-cancel lhv-flow-ais lhv-flow-pis \
+        lhv-webapp lhv-demo lhv_demo
 
 help: ## Show this help
 	@echo "Navesti developer commands:"
@@ -65,6 +76,17 @@ cert-check: ## Verify cert/key modulus match, extract TPP id, verify chain
 
 swagger-open: ## Open LHV sandbox Swagger in the browser
 	$(OPEN) "$(SWAGGER_URL)"
+
+lhv-webapp: ## Run the LHV connectivity web app and open it in the browser (needs LHV_LIVE=1)
+	@$(require_live)
+	@echo "Launching LHV connectivity harness on http://localhost:$(WEBAPP_PORT) (LHV_ENV=$(LHV_ENV))"
+	@( sleep 2 && $(OPEN) "http://localhost:$(WEBAPP_PORT)" >/dev/null 2>&1 ) &
+	cd tools/webapp/lhv && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec rackup -p $(WEBAPP_PORT)
+
+lhv-demo: ## Connectivity demo: launch the web app with LHV_LIVE=1 preset (sandbox)
+	@$(MAKE) --no-print-directory lhv-webapp LHV_LIVE=1
+
+lhv_demo: lhv-demo ## Alias for lhv-demo
 
 # --- LHV live calls (LHV_LIVE=1) ---
 

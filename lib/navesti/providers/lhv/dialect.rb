@@ -38,6 +38,19 @@ module Navesti
           "BLOCKED" => :blocked
         }.freeze
 
+        # Berlin Group AIS consentStatus string => normalized symbol. Same
+        # "unknown never collapses" discipline as payment status: an unmapped
+        # code becomes :unknown (never :valid), preserving the raw value so the
+        # host never treats an unrecognized state as authorised access.
+        CONSENT_STATUS = {
+          "received"        => :received,
+          "valid"            => :valid,
+          "rejected"         => :rejected,
+          "expired"          => :expired,
+          "revokedByPsu"     => :revoked_by_psu,
+          "terminatedByTpp"  => :terminated_by_tpp
+        }.freeze
+
         # Berlin Group balanceType values, classified into the two facts the
         # BalanceProvider port carries. All raw entries are preserved on the
         # Balance regardless; this only decides which becomes available/booked.
@@ -76,6 +89,12 @@ module Navesti
 
         def access(access_string)
           ACCESS.fetch(access_string.to_s, :unknown)
+        end
+
+        # Normalizes a Berlin Group consentStatus into a symbol, preserving the
+        # raw string on the Consent. Unknown values never map to :valid.
+        def consent_status(raw_status)
+          CONSENT_STATUS.fetch(raw_status.to_s, :unknown)
         end
 
         # Validates a PaymentOrder against the SEPA constraints LHV enforces,

@@ -1,0 +1,25 @@
+{
+  "consentId": "c0ffee00-0001-4a2b-9c3d-consent0001",
+  "consentStatus": "received",
+  "validUntil": "2099-12-31",
+  "frequencyPerDay": 4,
+  "recurringIndicator": false,
+  "scaMethods": [
+    { "authenticationType": "SMS_OTP", "authenticationMethodId": "MID", "name": "Mobile-ID" },
+    { "authenticationType": "PUSH_OTP", "authenticationMethodId": "SID", "name": "Smart-ID" }
+  ],
+  "_links": {
+    "scaRedirect": {
+      "href": "https://api.sandbox.lhv.eu/psd2/ui/v2/consent/c0ffee00-0001-4a2b-9c3d-consent0001"
+    },
+    "startAuthorisationWithAuthenticationMethodSelection": {
+      "href": "/v1/consents/c0ffee00-0001-4a2b-9c3d-consent0001/authorisations"
+    },
+    "self": {
+      "href": "/v1/consents/c0ffee00-0001-4a2b-9c3d-consent0001"
+    },
+    "status": {
+      "href": "/v1/consents/c0ffee00-0001-4a2b-9c3d-consent0001/status"
+    }
+  }
+}

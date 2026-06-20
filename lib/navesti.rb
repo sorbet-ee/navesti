@@ -28,6 +28,7 @@ require_relative "navesti/interaction"
 require_relative "navesti/tpp_verification"
 require_relative "navesti/payment_order"
 require_relative "navesti/payment_submission"
+require_relative "navesti/consent"
 require_relative "navesti/token"
 require_relative "navesti/credentials"
 

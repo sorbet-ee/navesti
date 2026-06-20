@@ -60,4 +60,24 @@ RSpec.describe Navesti::Providers::LHV::Dialect do
       expect(described_class.access("WHATEVER")).to eq(:unknown)
     end
   end
+
+  describe ".consent_status" do
+    {
+      "received"       => :received,
+      "valid"          => :valid,
+      "rejected"       => :rejected,
+      "expired"        => :expired,
+      "revokedByPsu"   => :revoked_by_psu,
+      "terminatedByTpp" => :terminated_by_tpp
+    }.each do |raw, symbol|
+      it "maps #{raw} -> #{symbol}" do
+        expect(described_class.consent_status(raw)).to eq(symbol)
+      end
+    end
+
+    it "maps an unknown consentStatus to :unknown (never :valid)" do
+      expect(described_class.consent_status("WHATEVER")).to eq(:unknown)
+      expect(described_class.consent_status("WHATEVER")).not_to eq(:valid)
+    end
+  end
 end
