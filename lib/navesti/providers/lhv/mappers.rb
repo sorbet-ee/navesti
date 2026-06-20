@@ -59,7 +59,13 @@ module Navesti
           list.map do |acc|
             Account.new(
               provider: Config::PROVIDER,
-              provider_account_id: acc["resourceId"],
+              # The no-consent /v1/accounts-list returns the "basic" account
+              # object (schema `Account`), which has NO resourceId — only iban
+              # (OpenAPI: Account vs AccountResponse). The consent variant
+              # carries resourceId. Use it when present; otherwise fall back to
+              # iban, which is still a stable, unique provider account id. The
+              # raw object below preserves exactly what the bank sent.
+              provider_account_id: acc["resourceId"] || acc["iban"],
               # provider-reported, may be "XXX"/nil — never ISO-validated.
               provider_reported_currency: acc["currency"],
               iban: acc["iban"],
@@ -190,6 +196,49 @@ module Navesti
           )
         end
 
+        # POST /v1/consents → Navesti::Consent.
+        #
+        # Mirrors payment_submission: the redirect SCA lives in _links.scaRedirect
+        # (validated through config.absolute, same as a payment), and the
+        # available SCA methods are surfaced read-only. The host stores
+        # consentId and supplies it to the consent-gated calls.
+        def consent(response, config:)
+          body = response.json
+          reject_on_error!(body)
+
+          consent_id = body["consentId"]
+          links = body["_links"] || {}
+          consent_ref = consent_reference(consent_id)
+
+          Consent.new(
+            provider: Config::PROVIDER,
+            consent_id: consent_id,
+            status: Dialect.consent_status(body["consentStatus"]),
+            raw_status: body["consentStatus"],
+            interaction: sca_interaction(links, consent_ref, config),
+            sca_methods: sca_methods(body),
+            valid_until: body["validUntil"],
+            recurring_indicator: body["recurringIndicator"],
+            raw: evidence(response)
+          )
+        end
+
+        # GET /v1/consents/{id}/status → Navesti::Consent (status-only).
+        # The consentId is not in the status response body, so it is threaded
+        # via a kwarg — mirroring payment_status(payment_id:).
+        def consent_status(response, consent_id:)
+          body = response.json
+          reject_on_error!(body)
+
+          Consent.new(
+            provider: Config::PROVIDER,
+            consent_id: consent_id,
+            status: Dialect.consent_status(body["consentStatus"]),
+            raw_status: body["consentStatus"],
+            raw: evidence(response)
+          )
+        end
+
         # --- helpers ---
 
         # Picks the first balance entry of a matching type and converts its
@@ -208,6 +257,12 @@ module Navesti
           return nil if payment_id.to_s.empty?
 
           ProviderReference.new(value: payment_id, kind: :payment, connector: Config::PROVIDER)
+        end
+
+        def consent_reference(consent_id)
+          return nil if consent_id.to_s.empty?
+
+          ProviderReference.new(value: consent_id, kind: :consent, connector: Config::PROVIDER)
         end
 
         # Decoupled SCA discovery: the methods the bank offers for this payment.

@@ -1,0 +1,6 @@
+{
+  "consentStatus": "valid",
+  "_links": {
+    "self": { "href": "/v1/consents/c0ffee00-0001-4a2b-9c3d-consent0001/status" }
+  }
+}

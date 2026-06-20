@@ -18,6 +18,8 @@ Version is **per-service**, not a single base segment: OAuth has no version, AIS
 {root}/oauth/authorize | /oauth/token | /oauth/revoke      (no version)
 {root}/v1/tpp-verification
 {root}/v1/accounts-list                                    (no-consent AIS)
+{root}/v1/accounts                                         (consent-gated AIS list)
+{root}/v1/consents (+ /{id}/status)                        (AIS consent create + status)
 {root}/v1/accounts/{id}/balances                           (consent-gated AIS)
 {root}/v1.1/payments/sepa-credit-transfers (+ /{id}/status)
 ```
@@ -50,9 +52,17 @@ Phase LHV-2B:
 | OAuth token revoke | `POST /oauth/revoke` | form-encoded; `client_id`, `token`, optional `token_type_hint`. Idempotent (200 even for nonexistent token). |
 | Decoupled SCA **discovery** | (read-only, from the init response) | `scaMethods[]` + `_links.startAuthorisationWithAuthenticationMethodSelection` surfaced on `PaymentSubmission`; the flow is not started. |
 
+Phase LHV-2C (AIS consent flow):
+
+| Purpose | Method & path | Notes |
+|---|---|---|
+| AIS consent creation | `POST /v1/consents` | `Bearer` + `Content-Type: application/json` + `TPP-Redirect-Preferred`, `TPP-Redirect-URI`, `PSU-IP-Address`; optional `PSU-Corporate-ID`. Body: `access.availableAccounts="allAccountsWithBalances"`, `recurringIndicator`, `validUntil`, `frequencyPerDay`, `combinedServiceIndicator`. 201 → `consentId`, `consentStatus` (received), `_links.scaRedirect`. The host holds `consentId`. |
+| AIS consent status | `GET /v1/consents/{consentId}/status` | `Bearer` + `X-Request-ID`. Returns `consentStatus` (received/rejected/valid/expired/revokedByPsu/terminatedByTpp); poll after SCA until `valid`. |
+| AIS accounts (consent-gated) | `GET /v1/accounts` | `Bearer` + **`Consent-ID`** (required) + optional `onlyActive`, `PSU-Corporate-ID`. Returns the full `AccountResponse[]` with `resourceId` + `_links.balances` — the `resourceId` is what makes Read Balances resolve correctly (the no-consent `/v1/accounts-list` lacks it). |
+
 ## Deferred endpoints (later)
 
-Decoupled SCA **execution** (`POST …/authorisations` + `GET …/authorisations/{id}`), consent **creation** (`POST /v1/consents`, `…/authorisations`), accounts-with-consent (`POST /v1/accounts`), transactions, PIIS (confirmation of funds), XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments.
+Decoupled SCA **execution** (`POST …/authorisations` + `GET …/authorisations/{id}`), decoupled consent SCA execution (`POST /v1/consents/{id}/authorisations` + `GET …/{id}/authorisations/{authId}`), transactions, PIIS (confirmation of funds), XML payments (`/v1/payments/pain.001-credit-transfers`), periodic payments.
 
 ## Known discrepancies & findings
 
@@ -62,7 +72,9 @@ Decoupled SCA **execution** (`POST …/authorisations` + `GET …/authorisations
 - **`ACSC` semantics** — source-bank debited and submitted to scheme; final beneficiary settlement is rail-dependent (instant = credited; batch = awaiting clearing). Navesti reports `confirmed`; Sorbet-Core decides settlement meaning.
 - **`ACSP` can linger** — usually → `ACSC` in minutes, but may stay on SEPA-Instant→regular fallback, manual intervention, or compliance. Post-SCA, so `side_effect_possible: true`.
 - **TLS trust anchor** — LHV server cert chains to DigiCert Global Root G2 (as of 30.03.2026); standard CA bundle suffices for server verification. Client mTLS (our QWAC) is separate.
-- **Balances are consent-gated** — unlike `/v1/accounts-list` (no consent), Read Balances is a standard Berlin Group AIS service and requires an AIS consent (`Consent-ID` header). LHV-2A implements the endpoint + normalization and takes a host-supplied `consent_id`; the consent-creation/authorisation flow is deferred. Multiple `balanceType` entries per currency are classified into available/booked and all preserved as raw.
+- **Balances are consent-gated** — unlike `/v1/accounts-list` (no consent), Read Balances is a standard Berlin Group AIS service and requires an AIS consent (`Consent-ID` header). LHV-2A implements the endpoint + normalization and takes a host-supplied `consent_id`; LHV-2C implements consent creation (`POST /v1/consents`) + status polling + the consent-gated `GET /v1/accounts`, which returns the real `resourceId` that Balances needs (the no-consent basic list lacks it → FORMAT_ERROR). Decoupled consent SCA execution (`…/authorisations`) remains deferred; only the **redirect** consent SCA (`_links.scaRedirect`) is wired. Multiple `balanceType` entries per currency are classified into available/booked and all preserved as raw.
+- **`availableAccounts` scope is granular** — LHV's `AccessReference` has only `balances[]`, `transactions[]`, and `availableAccounts` (an enum of `"allAccounts"` or `"allAccountsWithBalances"`). `"allAccounts"` grants the account **list only**; it does **not** grant balances, so Read Balances returns `FORMAT_ERROR` under such a consent even when the consent is `valid` and the consent-gated accounts list works. Use `"allAccountsWithBalances"` to grant the list + balances. (OpenAPI-verified; the original plan incorrectly assumed `allAccounts` covered balances.)
+- **`frequencyPerDay` vs `recurringIndicator`** — Berlin Group requires `frequencyPerDay=1` for a one-off (non-recurring) consent. LHV accepts a `recurring=false` + `frequencyPerDay>1` body at `POST /v1/consents`, but the combination is invalid; `create_consent` coerces `frequencyPerDay` to 1 whenever `recurring_indicator` is false.
 - **No idempotency mechanism for JSON SEPA** — the docs define `X-Request-ID` as a unique request id, not a dedup key, and document no idempotency header. Navesti maps a host `idempotency_key` to a deterministic `X-Request-ID` for payment initiation (correlation across retries; possible dedup only if LHV rejects duplicate request ids), but **the host must reconcile via payment status after an ambiguous outcome** — there is no guaranteed bank-side duplicate prevention here.
 - **No end-to-end identification in JSON SEPA** — the documented body is `instructedAmount` / `debtorAccount` / `creditorName` / `creditorAccount` / `remittanceInformationUnstructured` (+ `remittanceInformationStructured`, the Estonian creditor reference). There is no `endToEndIdentification`, so `PaymentOrder#end_to_end_reference` is **not transmitted** (preserved on the order for the host's reconciliation). Revisit if LHV confirms support.
 - **SEPA field limits** — deterministic limits enforced host-side before dialing: EUR for the SEPA rail, creditor name ≤ 70, unstructured remittance ≤ 140. Charset/IBAN-checksum/date rules are left to the bank (false-rejection risk).

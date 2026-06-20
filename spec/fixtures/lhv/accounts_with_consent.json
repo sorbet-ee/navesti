@@ -1,0 +1,31 @@
+{
+  "accounts": [
+    {
+      "resourceId": "f3a1c2d4-0001-4a2b-9c3d-aaaabbbbcccc",
+      "iban": "EE717700771001735865",
+      "ownerName": "Liis-Mari Mannik",
+      "currency": "XXX",
+      "product": "Multi currency account",
+      "cashAccountType": "CACC",
+      "name": "Igapaevakonto",
+      "status": "enabled",
+      "_links": {
+        "balances": { "href": "/v1/accounts/f3a1c2d4-0001-4a2b-9c3d-aaaabbbbcccc/balances" },
+        "transactions": { "href": "/v1/accounts/f3a1c2d4-0001-4a2b-9c3d-aaaabbbbcccc/transactions" }
+      }
+    },
+    {
+      "resourceId": "f3a1c2d4-0002-4a2b-9c3d-ddddeeeeffff",
+      "iban": "EE277700771001735881",
+      "ownerName": "Liis-Mari Mannik",
+      "currency": "XXX",
+      "product": "Multi currency account",
+      "cashAccountType": "CACC",
+      "status": "enabled",
+      "_links": {
+        "balances": { "href": "/v1/accounts/f3a1c2d4-0002-4a2b-9c3d-ddddeeeeffff/balances" },
+        "transactions": { "href": "/v1/accounts/f3a1c2d4-0002-4a2b-9c3d-ddddeeeeffff/transactions" }
+      }
+    }
+  ]
+}

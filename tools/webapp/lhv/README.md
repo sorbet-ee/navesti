@@ -13,25 +13,29 @@ gemspec. It plays exactly the role Sorbet-Cockpit will: it renders the UX and
 opens bank URLs, while Navesti returns normalized facts and interaction
 descriptors. Building it here demonstrates the boundary; it doesn't cross it.
 
+This is the **LHV** app. Each connector gets its own sibling app under
+`tools/webapp/<connector>/` with its own Gemfile — none of them ship in the gem
+(the gemspec packages `lib/**` only; the gem stays a headless SDK).
+
 ## Run
 
 One command from the repo root — installs the webapp's deps on first run, opens
 the browser, and defaults the cert paths to `certs/lhv_sandbox.*`:
 
 ```
-LHV_LIVE=1 make webapp
+LHV_LIVE=1 make lhv-webapp
 ```
 
-Override the port or cert paths if needed: `LHV_LIVE=1 WEBAPP_PORT=9300 make webapp`,
+Override the port or cert paths if needed: `LHV_LIVE=1 WEBAPP_PORT=9300 make lhv-webapp`,
 or export your own `LHV_CLIENT_CERT_PATH` etc.
 
 Or run it directly:
 
 ```
-cd tools/webapp && bundle install
-LHV_LIVE=1 LHV_CLIENT_CERT_PATH=../../certs/lhv_sandbox.crt \
-LHV_CLIENT_KEY_PATH=../../certs/lhv_sandbox.key \
-LHV_CA_CHAIN_PATH=../../certs/lhv_sandbox_chain.pem bundle exec rackup -p 9292
+cd tools/webapp/lhv && bundle install
+LHV_LIVE=1 LHV_CLIENT_CERT_PATH=../../../certs/lhv_sandbox.crt \
+LHV_CLIENT_KEY_PATH=../../../certs/lhv_sandbox.key \
+LHV_CA_CHAIN_PATH=../../../certs/lhv_sandbox_chain.pem bundle exec rackup -p 9292
 ```
 
 Then open <http://localhost:9292>. The default `redirect_uri` is

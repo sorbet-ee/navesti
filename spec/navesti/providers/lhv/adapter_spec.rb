@@ -147,6 +147,21 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
       expect(accounts.last.status).to eq(:blocked)
     end
 
+    it "falls back to IBAN as provider_account_id for the no-consent basic list (no resourceId)" do
+      # GET /v1/accounts-list returns the "basic" Account schema, which has no
+      # resourceId — only iban (OpenAPI: Account vs AccountResponse). The
+      # consent variant carries resourceId; this fixture mirrors the no-consent
+      # shape and must not raise "missing required attribute :provider_account_id".
+      a, = adapter(Fixtures.lhv_response("accounts_list_no_consent"))
+      accounts = a.accounts_list(access_token: "tok")
+
+      expect(accounts.size).to eq(2)
+      expect(accounts.first.provider_account_id).to eq("EE717700771001735865")
+      expect(accounts.first.iban).to eq("EE717700771001735865")
+      # raw preserves exactly what the bank sent — no fabricated resourceId.
+      expect(accounts.first.raw[:account]).not_to have_key("resourceId")
+    end
+
     it "sends Bearer auth, onlyActive, and X-Request-ID" do
       a, http = adapter(Fixtures.lhv_response("accounts_list"))
       a.accounts_list(access_token: "tok-123", only_active: true)
@@ -179,6 +194,99 @@ RSpec.describe Navesti::Providers::LHV::Adapter do
       a, = adapter(Fixtures.lhv_response("accounts_list"))
       account = a.accounts_list(access_token: "tok").first
       expect(account.raw[:account]["resourceId"]).to eq("f3a1c2d4-0001-4a2b-9c3d-aaaabbbbcccc")
+    end
+  end
+
+  # --- AIS consent flow ---
+
+  describe "#create_consent" do
+    it "posts a consent request and returns a :received Consent with a redirect interaction" do
+      a, http = adapter(Fixtures.lhv_response("consent_received", status: 201))
+      consent = a.create_consent(
+        access_token: "tok", valid_until: "2099-12-31", redirect_uri: "https://host/consent-cb"
+      )
+
+      expect(consent).to be_a(Navesti::Consent)
+      expect(consent.consent_id).to eq("c0ffee00-0001-4a2b-9c3d-consent0001")
+      expect(consent.status).to eq(:received)
+      expect(consent.raw_status).to eq("received")
+      expect(consent.valid_until).to eq("2099-12-31")
+      expect(consent.recurring_indicator).to eq(false)
+      expect(consent).to be_requires_authorization
+      expect(consent.interaction.type).to eq(:redirect)
+      expect(consent.interaction.url).to include("/ui/v2/consent/")
+      expect(consent.interaction.provider_reference.kind).to eq(:consent)
+    end
+
+    it "sends Bearer, PSU-IP-Address, TPP-Redirect-URI, and a global allAccountsWithBalances JSON body" do
+      a, http = adapter(Fixtures.lhv_response("consent_received", status: 201))
+      a.create_consent(access_token: "tok-7", valid_until: "2099-12-31",
+                       redirect_uri: "https://host/cb", psu_corporate_id: "EE47101010033")
+
+      req = http.last_request
+      expect(req[:url]).to eq("https://api.sandbox.lhv.eu/psd2/v1/consents")
+      expect(req[:headers]["Authorization"]).to eq("Bearer tok-7")
+      expect(req[:headers]["PSU-IP-Address"]).to eq("127.0.0.1")
+      expect(req[:headers]["TPP-Redirect-URI"]).to eq("https://host/cb")
+      expect(req[:headers]["PSU-Corporate-ID"]).to eq("EE47101010033")
+      body = JSON.parse(req[:body])
+      expect(body["access"]).to eq("availableAccounts" => "allAccountsWithBalances")
+      expect(body["validUntil"]).to eq("2099-12-31")
+      expect(body["combinedServiceIndicator"]).to eq(false)
+    end
+
+    it "coerces frequencyPerDay to 1 for a non-recurring consent, honoring it when recurring" do
+      a, http = adapter(Fixtures.lhv_response("consent_received", status: 201),
+                        Fixtures.lhv_response("consent_received", status: 201))
+      a.create_consent(access_token: "tok", valid_until: "2099-12-31", redirect_uri: "https://host/cb",
+                       recurring_indicator: false, frequency_per_day: 4)
+      expect(JSON.parse(http.last_request[:body])["frequencyPerDay"]).to eq(1)
+
+      a.create_consent(access_token: "tok", valid_until: "2099-12-31", redirect_uri: "https://host/cb",
+                       recurring_indicator: true, frequency_per_day: 4)
+      expect(JSON.parse(http.last_request[:body])["frequencyPerDay"]).to eq(4)
+    end
+
+    it "surfaces the available SCA methods" do
+      a, = adapter(Fixtures.lhv_response("consent_received", status: 201))
+      consent = a.create_consent(access_token: "tok", valid_until: "2099-12-31", redirect_uri: "https://host/cb")
+      expect(consent.sca_methods).to all(be_a(Navesti::ScaMethod))
+      expect(consent.sca_methods.map(&:method_id)).to contain_exactly("MID", "SID")
+    end
+
+    it "raises ConsentError on 401" do
+      a, = adapter(FakeHTTPClient.json_response(status: 401, body: {}))
+      expect { a.create_consent(access_token: "expired", valid_until: "2099-12-31", redirect_uri: "x") }
+        .to raise_error(Navesti::ConsentError)
+    end
+  end
+
+  describe "#consent_status" do
+    it "polls the status endpoint and normalizes valid -> :valid" do
+      a, http = adapter(Fixtures.lhv_response("consent_status_valid"))
+      consent = a.consent_status(consent_id: "c0ffee00-0001-4a2b-9c3d-consent0001", access_token: "tok")
+
+      expect(consent).to be_a(Navesti::Consent)
+      expect(consent.consent_id).to eq("c0ffee00-0001-4a2b-9c3d-consent0001")
+      expect(consent.status).to eq(:valid)
+      expect(consent.raw_status).to eq("valid")
+      expect(consent.interaction).to be_nil
+      expect(http.last_request[:url])
+        .to eq("https://api.sandbox.lhv.eu/psd2/v1/consents/c0ffee00-0001-4a2b-9c3d-consent0001/status")
+    end
+  end
+
+  describe "#accounts_list with consent" do
+    it "hits /v1/accounts, sends Consent-ID, and returns accounts keyed by resourceId" do
+      a, http = adapter(Fixtures.lhv_response("accounts_with_consent"))
+      accounts = a.accounts_list(access_token: "tok", consent_id: "consent-1")
+
+      expect(accounts.size).to eq(2)
+      expect(accounts.first.provider_account_id).to eq("f3a1c2d4-0001-4a2b-9c3d-aaaabbbbcccc")
+      req = http.last_request
+      expect(req[:url]).to include("/v1/accounts?onlyActive=true")
+      expect(req[:headers]["Consent-ID"]).to eq("consent-1")
+      expect(req[:headers]["Authorization"]).to eq("Bearer tok")
     end
   end
 

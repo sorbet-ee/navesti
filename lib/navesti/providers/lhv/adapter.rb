@@ -77,18 +77,86 @@ module Navesti
           Mappers.token(response)
         end
 
-        # GET /v1/accounts-list (no-consent variant). Returns [Account].
-        def accounts_list(access_token:, only_active: true, psu_corporate_id: nil)
+        # GET /v1/accounts-list (no-consent) or GET /v1/accounts (consent-gated).
+        # Returns [Account]. When `consent_id` is present, hits the consent-gated
+        # /v1/accounts (Consent-ID header) — that path returns the full
+        # AccountResponse schema with resourceId, which is what Read Balances
+        # needs. Without it, falls back to the no-consent basic list (no
+        # resourceId; balances then resolve via the bank-supplied balances href).
+        def accounts_list(access_token:, only_active: true, psu_corporate_id: nil, consent_id: nil)
           headers = bearer_headers(access_token)
           headers["PSU-Corporate-ID"] = psu_corporate_id if psu_corporate_id
+          headers["Consent-ID"] = consent_id if consent_id
+          url = consent_id ? config.accounts_with_consent_url(only_active: only_active)
+                            : config.accounts_list_url(only_active: only_active)
           response = @http.request(
             method: :get,
-            url: config.accounts_list_url(only_active: only_active),
+            url: url,
             headers: headers,
             credentials: credentials
           )
           guard_response!(response)
           Mappers.accounts(response)
+        end
+
+        # POST /v1/consents → Navesti::Consent.
+        #
+        # Creates an AIS consent granting balances on all accounts. LHV's
+        # AccessReference.availableAccounts is an enum: "allAccounts" grants only
+        # the account LIST, "allAccountsWithBalances" grants the list AND
+        # balances (OpenAPI-verified). The latter is required so Read Balances
+        # resolves — "allAccounts" alone makes balances return FORMAT_ERROR
+        # (the consent does not cover the balances resource). The PSU authorizes
+        # via the redirect SCA in _links.scaRedirect (host opens it; PSU completes
+        # SCA at LHV; consent moves received → valid). The host holds the
+        # returned consentId and supplies it to consent-gated calls.
+        #
+        # `valid_until` is a required host-supplied ISO date string (YYYY-MM-DD)
+        # — the gem stays deterministic: no Date.today here.
+        def create_consent(access_token:, valid_until:, redirect_uri:,
+                           recurring_indicator: false, frequency_per_day: 4,
+                           combined_service_indicator: false, psu_corporate_id: nil,
+                           psu_ip_address: "127.0.0.1")
+          headers = bearer_headers(access_token).merge(
+            "Content-Type" => "application/json",
+            "TPP-Redirect-Preferred" => "true",
+            "TPP-Redirect-URI" => redirect_uri,
+            "PSU-IP-Address" => psu_ip_address
+          )
+          headers["PSU-Corporate-ID"] = psu_corporate_id if psu_corporate_id
+
+          body = {
+            "access" => { "availableAccounts" => "allAccountsWithBalances" },
+            "recurringIndicator" => recurring_indicator,
+            "validUntil" => valid_until,
+            # Berlin Group: a one-off (non-recurring) consent must request exactly
+            # one access per day. Coerce rather than trust the caller, so we never
+            # send the invalid recurring=false + frequencyPerDay>1 combination.
+            "frequencyPerDay" => recurring_indicator ? frequency_per_day : 1,
+            "combinedServiceIndicator" => combined_service_indicator
+          }
+          response = @http.request(
+            method: :post,
+            url: config.consents_url,
+            headers: headers,
+            body: JSON.generate(body),
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.consent(response, config: config)
+        end
+
+        # GET /v1/consents/{consentId}/status → Navesti::Consent (status-only).
+        # Poll after the PSU completes SCA; the consent moves received → valid.
+        def consent_status(consent_id:, access_token:)
+          response = @http.request(
+            method: :get,
+            url: config.consent_status_url(consent_id),
+            headers: bearer_headers(access_token),
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.consent_status(response, consent_id: consent_id)
         end
 
         # GET /v1/accounts/{account_id}/balances → [Balance], one per currency.

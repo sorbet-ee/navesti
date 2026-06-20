@@ -59,6 +59,24 @@ module Navesti
           "#{root}/v1/accounts-list?#{query}"
         end
 
+        # Consent-gated accounts list (Berlin Group GET /v1/accounts). Unlike
+        # /v1/accounts-list, this one requires a Consent-ID header and returns
+        # the full AccountResponse schema — which carries the resourceId needed
+        # to build a correct Read Balances path.
+        def accounts_with_consent_url(only_active: true)
+          query = URI.encode_www_form(onlyActive: only_active)
+          "#{root}/v1/accounts?#{query}"
+        end
+
+        # AIS consent creation + status (Berlin Group GET/POST /v1/consents).
+        def consents_url
+          "#{root}/v1/consents"
+        end
+
+        def consent_status_url(consent_id)
+          "#{root}/v1/consents/#{encode_segment(consent_id)}/status"
+        end
+
         # Read Balances (Berlin Group AIS). Consent-gated — the caller supplies
         # a Consent-ID. Prefer the href from accounts-list when available; this
         # builds the canonical path when it is not.

@@ -1,0 +1,24 @@
+{
+  "accounts": [
+    {
+      "iban": "EE717700771001735865",
+      "ownerName": "Liis-Mari Mannik",
+      "currency": "XXX",
+      "product": "Multi currency account",
+      "cashAccountType": "CACC",
+      "name": "Igapaevakonto",
+      "status": "enabled",
+      "_links": {
+        "balances": { "href": "/v1/accounts/EE717700771001735865/balances" }
+      }
+    },
+    {
+      "iban": "EE277700771001735881",
+      "ownerName": "Liis-Mari Mannik",
+      "currency": "XXX",
+      "product": "Multi currency account",
+      "cashAccountType": "CACC",
+      "status": "blocked"
+    }
+  ]
+}
