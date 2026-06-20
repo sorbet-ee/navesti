@@ -34,6 +34,7 @@ require_relative "navesti/credentials"
 
 # Security + HTTP infrastructure (docs/10, shared across PSD2 banks).
 require_relative "navesti/security/certificate_identity"
+require_relative "navesti/security/jws"
 require_relative "navesti/http/response"
 require_relative "navesti/http/client"
 
@@ -42,6 +43,12 @@ require_relative "navesti/providers/lhv/config"
 require_relative "navesti/providers/lhv/dialect"
 require_relative "navesti/providers/lhv/mappers"
 require_relative "navesti/providers/lhv/adapter"
+
+# Wise (UK OBIE) — config + dialect first; mappers/adapter land in later slices
+# (docs/14-semantic-compression-and-the-connector-layer.md).
+require_relative "navesti/providers/wise/config"
+require_relative "navesti/providers/wise/dialect"
+require_relative "navesti/providers/wise/mappers"
 
 module Navesti
   # Constructs a bank adapter. Credentials and HTTP client are supplied by the

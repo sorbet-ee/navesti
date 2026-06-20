@@ -19,4 +19,8 @@ module Fixtures
   def lhv_response(name, status: 200)
     FakeHTTPClient.json_response(status: status, body: raw(:lhv, name))
   end
+
+  def wise_response(name, status: 200)
+    FakeHTTPClient.json_response(status: status, body: raw(:wise, name))
+  end
 end

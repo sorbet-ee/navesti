@@ -1,0 +1,27 @@
+{
+  "Data": {
+    "Balance": [
+      {
+        "AccountId": "504",
+        "CreditDebitIndicator": "Credit",
+        "Type": "InterimAvailable",
+        "Amount": { "Amount": "100.00", "Currency": "GBP" },
+        "DateTime": "2026-06-20T10:00:00.000Z"
+      },
+      {
+        "AccountId": "504",
+        "CreditDebitIndicator": "Credit",
+        "Type": "InterimBooked",
+        "Amount": { "Amount": "95.50", "Currency": "GBP" },
+        "DateTime": "2026-06-20T10:00:00.000Z"
+      },
+      {
+        "AccountId": "504",
+        "CreditDebitIndicator": "Debit",
+        "Type": "InterimAvailable",
+        "Amount": { "Amount": "12.34", "Currency": "EUR" },
+        "DateTime": "2026-06-20T10:00:00.000Z"
+      }
+    ]
+  }
+}

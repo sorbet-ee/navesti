@@ -1,0 +1,39 @@
+{
+  "Data": {
+    "Account": [
+      {
+        "AccountId": "504",
+        "Currency": "GBP",
+        "AccountType": "Personal",
+        "AccountSubType": "EMoney",
+        "Account": [
+          {
+            "SchemeName": "UK.OBIE.SortCodeAccountNumber",
+            "Identification": "23001012345678",
+            "Name": "Jane Doe (GBP)"
+          }
+        ],
+        "Servicer": { "SchemeName": "UK.OBIE.BICFI", "Identification": "TRWIGB22" }
+      },
+      {
+        "AccountId": "777",
+        "Currency": "EUR",
+        "AccountType": "Personal",
+        "AccountSubType": "EMoney",
+        "Account": [
+          {
+            "SchemeName": "UK.OBIE.IBAN",
+            "Identification": "BE00000000000000000",
+            "Name": "Jane Doe (EUR)"
+          }
+        ]
+      },
+      {
+        "AccountId": "888",
+        "Currency": "USD",
+        "AccountType": "Business",
+        "AccountSubType": "EMoney"
+      }
+    ]
+  }
+}
