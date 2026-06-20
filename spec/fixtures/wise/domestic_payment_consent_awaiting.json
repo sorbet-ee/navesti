@@ -1,0 +1,19 @@
+{
+  "Data": {
+    "ConsentId": "urn-wise-dpc-555",
+    "Status": "AwaitingAuthorisation",
+    "CreationDateTime": "2026-06-20T10:00:00.000Z",
+    "CutOffDateTime": "2026-06-20T10:30:00.000Z",
+    "Initiation": {
+      "InstructionIdentification": "webapp-deadbeef",
+      "EndToEndIdentification": "NOTPROVIDED",
+      "InstructedAmount": { "Amount": "10.00", "Currency": "GBP" },
+      "CreditorAccount": {
+        "SchemeName": "UK.OBIE.IBAN",
+        "Identification": "GB00WISE00000000000000",
+        "Name": "Acme Ltd"
+      }
+    }
+  },
+  "Risk": {}
+}

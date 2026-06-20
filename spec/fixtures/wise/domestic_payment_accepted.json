@@ -1,0 +1,12 @@
+{
+  "Data": {
+    "DomesticPaymentId": "urn-wise-dp-999",
+    "ConsentId": "urn-wise-dpc-555",
+    "Status": "AcceptedSettlementInProcess",
+    "CreationDateTime": "2026-06-20T10:31:00.000Z",
+    "StatusUpdateDateTime": "2026-06-20T10:31:00.000Z"
+  },
+  "Links": {
+    "Self": "https://openbanking.wise-sandbox.com/open-banking/v3.1.11/pisp/domestic-payments/urn-wise-dp-999"
+  }
+}

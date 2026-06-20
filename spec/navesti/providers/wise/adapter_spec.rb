@@ -193,6 +193,64 @@ RSpec.describe Navesti::Providers::Wise::Adapter do
     end
   end
 
+  describe "PISP (domestic)" do
+    def payment_order(idempotency_key: "webapp-deadbeef", reference: "INV-001")
+      Navesti::PaymentOrder.new(
+        money: Navesti::Money.from_decimal("10.00", "GBP"),
+        debtor: Navesti::AccountRef.iban("GB29NWBK60161331926819"),
+        creditor: Navesti::AccountRef.iban("GB94BARC10201530093459"),
+        creditor_name: "Acme Ltd",
+        remittance_information: "invoice 001",
+        end_to_end_reference: reference,
+        idempotency_key: idempotency_key
+      )
+    end
+
+    it "#create_domestic_payment_consent posts the Initiation with an x-idempotency-key" do
+      a, http = adapter(Fixtures.wise_response("domestic_payment_consent_awaiting", status: 201))
+      consent = a.create_domestic_payment_consent(access_token: "user-tok", order: payment_order)
+
+      expect(consent.consent_id).to eq("urn-wise-dpc-555")
+      expect(consent.status).to eq(:received)
+      req = http.last_request
+      expect(req[:url]).to end_with("/v3.1.11/pisp/domestic-payment-consents")
+      expect(req[:headers]["x-idempotency-key"]).to eq("webapp-deadbeef")
+      init = JSON.parse(req[:body]).dig("Data", "Initiation")
+      expect(init["InstructedAmount"]).to eq("Amount" => "10.00", "Currency" => "GBP")
+      expect(init["CreditorAccount"]).to eq(
+        "SchemeName" => "UK.OBIE.IBAN", "Identification" => "GB94BARC10201530093459", "Name" => "Acme Ltd"
+      )
+      expect(init["RemittanceInformation"]).to eq("Reference" => "INV-001", "Unstructured" => "invoice 001")
+    end
+
+    it "#create_domestic_payment posts the ConsentId + Initiation and maps the submission" do
+      a, http = adapter(Fixtures.wise_response("domestic_payment_accepted", status: 201))
+      sub = a.create_domestic_payment(access_token: "user-tok", consent_id: "urn-wise-dpc-555", order: payment_order)
+
+      expect(sub).to be_a(Navesti::PaymentSubmission)
+      expect(sub.provider_reference.value).to eq("urn-wise-dp-999")
+      expect(sub.status.status).to eq(:pending_execution)
+      expect(sub.side_effect_possible).to be(true)
+      body = JSON.parse(http.last_request[:body])
+      expect(body.dig("Data", "ConsentId")).to eq("urn-wise-dpc-555")
+      expect(http.last_request[:url]).to end_with("/v3.1.11/pisp/domestic-payments")
+    end
+
+    it "#domestic_payment_status reads the order status" do
+      a, http = adapter(Fixtures.wise_response("domestic_payment_accepted"))
+      st = a.domestic_payment_status(access_token: "user-tok", payment_id: "urn-wise-dp-999")
+
+      expect(st.status).to eq(:pending_execution)
+      expect(http.last_request[:url]).to end_with("/pisp/domestic-payments/urn-wise-dp-999")
+    end
+
+    it "validates the order before dialing (rejects an over-length GBP reference)" do
+      a, = adapter
+      expect { a.create_domestic_payment_consent(access_token: "t", order: payment_order(reference: "X" * 19)) }
+        .to raise_error(Navesti::ValidationError, /18-char/)
+    end
+  end
+
   it "is constructible via Navesti.adapter(:wise)" do
     a = Navesti.adapter(:wise, credentials: credentials, env: :sandbox)
     expect(a).to be_a(described_class)

@@ -133,7 +133,97 @@ module Navesti
           Mappers.consent_status(response)
         end
 
+        # --- PISP (domestic, same-currency) ---
+
+        # POST /pisp/domestic-payment-consents — creates a payment-order consent
+        # carrying the Initiation, returning a Consent in AwaitingAuthorisation
+        # (with a 30-min CutOffDateTime). The host authorizes it via #authorize_url
+        # (scope "openid payments"), exchanges the code, then calls
+        # #create_domestic_payment with the ConsentId. Validated host-side first.
+        def create_domestic_payment_consent(access_token:, order:)
+          Dialect.validate_payment_order!(order)
+          body = { "Data" => { "Initiation" => payment_initiation(order) }, "Risk" => {} }
+          response = @http.request(
+            method: :post,
+            url: config.domestic_payment_consents_url,
+            headers: payment_headers(access_token, order),
+            body: JSON.generate(body),
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.consent(response)
+        end
+
+        # POST /pisp/domestic-payments — submits the payment-order against an
+        # authorized consent. Post-SCA: the returned PaymentSubmission carries a
+        # status (no interaction). The Initiation must match the consent's.
+        def create_domestic_payment(access_token:, consent_id:, order:)
+          Dialect.validate_payment_order!(order)
+          body = { "Data" => { "ConsentId" => consent_id, "Initiation" => payment_initiation(order) }, "Risk" => {} }
+          response = @http.request(
+            method: :post,
+            url: config.domestic_payments_url,
+            headers: payment_headers(access_token, order),
+            body: JSON.generate(body),
+            credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.payment_submission(response, idempotency_key: order.idempotency_key)
+        end
+
+        # GET /pisp/domestic-payments/{id} → PaymentStatus.
+        def domestic_payment_status(access_token:, payment_id:)
+          response = @http.request(
+            method: :get, url: config.domestic_payment_url(payment_id),
+            headers: bearer_headers(access_token), credentials: credentials
+          )
+          guard_response!(response)
+          Mappers.payment_status(response, payment_id: payment_id)
+        end
+
         private
+
+        # OBIE payment endpoints require an x-idempotency-key (≤40 chars). Unlike
+        # LHV's JSON SEPA (no documented idempotency), this is a real bank-side
+        # dedup key — a host idempotency_key flows straight through.
+        def payment_headers(access_token, order)
+          bearer_headers(
+            access_token,
+            "Content-Type" => "application/json",
+            "x-idempotency-key" => idempotency_key_for(order)
+          )
+        end
+
+        # Builds the OBIE domestic Initiation from a Navesti PaymentOrder. The
+        # same Initiation is sent on both the consent and the payment-order, so
+        # they match. Our AccountRef is IBAN-based → UK.OBIE.IBAN scheme.
+        def payment_initiation(order)
+          initiation = {
+            "InstructionIdentification" => instruction_id(order),
+            "EndToEndIdentification" => (order.end_to_end_reference || "NOTPROVIDED").to_s[0, 35],
+            "InstructedAmount" => { "Amount" => order.money.to_decimal_string, "Currency" => order.money.currency },
+            "CreditorAccount" => {
+              "SchemeName" => "UK.OBIE.IBAN",
+              "Identification" => order.creditor.iban,
+              "Name" => order.creditor_name
+            }
+          }
+          remittance = {}
+          remittance["Reference"] = order.end_to_end_reference if order.end_to_end_reference
+          remittance["Unstructured"] = order.remittance_information if order.remittance_information
+          initiation["RemittanceInformation"] = remittance unless remittance.empty?
+          initiation
+        end
+
+        # InstructionIdentification (≤35): derived from the host idempotency key
+        # so a retry reuses it; otherwise a fresh random id.
+        def instruction_id(order)
+          (order.idempotency_key || SecureRandom.hex(16)).to_s[0, 35]
+        end
+
+        def idempotency_key_for(order)
+          order.idempotency_key || SecureRandom.uuid
+        end
 
         # The registered OBIE client_id (the cert CN matches it). The host
         # supplies it as credentials.tpp_id — unlike LHV, it is not the cert's
