@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Revokes a token. By default revokes the saved refresh_token; pass
+# LHV_REVOKE_TOKEN to revoke a specific token, and LHV_REVOKE_HINT for the
+# token_type_hint (refresh_token / access_token).
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+
+token = ENV["LHV_REVOKE_TOKEN"]
+hint = ENV["LHV_REVOKE_HINT"]
+if token.to_s.empty?
+  saved = LhvDev.read_json("token_set.json")
+  token = saved["refresh_token"]
+  hint ||= "refresh_token"
+end
+abort "No token to revoke." if token.to_s.empty?
+
+LhvDev.adapter.revoke_token(token: token, token_type_hint: hint)
+# Never print the token itself (CLAUDE.md browser rule 12).
+puts "Revoked #{hint || 'token'} (HTTP 200)."

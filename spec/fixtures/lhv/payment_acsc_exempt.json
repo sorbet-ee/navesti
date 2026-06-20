@@ -1,0 +1,12 @@
+{
+  "transactionStatus": "ACSC",
+  "paymentId": "3b770cfa-6779-4d6b-8e1d-6934a06f6691",
+  "_links": {
+    "self": {
+      "href": "/v1.1/payments/sepa-credit-transfers/3b770cfa-6779-4d6b-8e1d-6934a06f6691"
+    },
+    "status": {
+      "href": "/v1.1/payments/sepa-credit-transfers/3b770cfa-6779-4d6b-8e1d-6934a06f6691/status"
+    }
+  }
+}

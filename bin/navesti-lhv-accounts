@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Lists accounts using the saved token set (or LHV_ACCESS_TOKEN).
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+token = ENV["LHV_ACCESS_TOKEN"] || LhvDev.read_json("token_set.json")["access_token"]
+accounts = LhvDev.adapter.accounts_list(access_token: token, psu_corporate_id: ENV["LHV_PSU_CORPORATE_ID"])
+
+accounts.each do |acc|
+  puts "#{acc.provider_account_id}  #{acc.iban}  #{acc.provider_reported_currency}  " \
+       "#{acc.cash_account_type}  #{acc.status}"
+end
+LhvDev.save_json("accounts.json", accounts.map { |a| a.to_h.reject { |k, _| k == :raw } })
+puts "saved -> tmp/lhv/accounts.json (#{accounts.size} accounts)"

@@ -1,0 +1,6 @@
+{
+  "access": "BLOCKED",
+  "tppId": "PSDEE-LHVTEST-402383",
+  "name": "PSD2 Test",
+  "roles": ["AIS", "PIS", "PIIS"]
+}

@@ -1,0 +1,9 @@
+{
+  "transactionStatus": "CANC",
+  "paymentId": "ac8bab09-fdda-4b6d-8776-3a0583df574a",
+  "_links": {
+    "status": {
+      "href": "/v1.1/payments/sepa-credit-transfers/ac8bab09-fdda-4b6d-8776-3a0583df574a/status"
+    }
+  }
+}

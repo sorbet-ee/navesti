@@ -1,0 +1,22 @@
+{
+  "transactionStatus": "RCVD",
+  "paymentId": "ac8bab09-fdda-4b6d-8776-3a0583df574a",
+  "scaMethods": [
+    { "authenticationType": "SMS_OTP", "authenticationMethodId": "MID", "name": "Mobile-ID" },
+    { "authenticationType": "PUSH_OTP", "authenticationMethodId": "SID", "name": "Smart-ID" }
+  ],
+  "_links": {
+    "scaRedirect": {
+      "href": "https://api.sandbox.lhv.eu/psd2/ui/v2/payment/sepa/ac8bab09-fdda-4b6d-8776-3a0583df574a"
+    },
+    "startAuthorisationWithAuthenticationMethodSelection": {
+      "href": "/v1.1/payments/sepa-credit-transfers/ac8bab09-fdda-4b6d-8776-3a0583df574a/authorisations"
+    },
+    "self": {
+      "href": "/v1.1/payments/sepa-credit-transfers/ac8bab09-fdda-4b6d-8776-3a0583df574a"
+    },
+    "status": {
+      "href": "/v1.1/payments/sepa-credit-transfers/ac8bab09-fdda-4b6d-8776-3a0583df574a/status"
+    }
+  }
+}

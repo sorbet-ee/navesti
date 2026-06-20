@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Cancels a SEPA payment (LHV_PAYMENT_ID, or the saved payment). Valid only
+# before SCA completes — if SCA is done the bank rejects and this raises.
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+token = ENV["LHV_ACCESS_TOKEN"] || LhvDev.read_json("token_set.json")["access_token"]
+payment_id = ENV["LHV_PAYMENT_ID"]
+payment_id = LhvDev.read_json("payment.json")["payment_id"] if payment_id.to_s.empty?
+abort "No payment id. Set LHV_PAYMENT_ID or run lhv-sepa-init first." if payment_id.to_s.empty?
+
+status = LhvDev.adapter.cancel_payment(payment_id: payment_id, access_token: token)
+puts "status:        #{status.status} (#{status.raw_status})"
+puts "safety_status: #{status.safety_status}"
+puts "side_effect:   #{status.side_effect_possible}"
+LhvDev.save_json("payment_cancel.json", {
+  payment_id: payment_id, status: status.status, raw_status: status.raw_status,
+  safety_status: status.safety_status, side_effect_possible: status.side_effect_possible
+})
+puts "saved -> tmp/lhv/payment_cancel.json"

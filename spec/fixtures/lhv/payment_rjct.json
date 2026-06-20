@@ -1,0 +1,9 @@
+{
+  "transactionStatus": "RJCT",
+  "paymentId": "9d1e7c44-1111-4d6b-8e1d-6934a06f0000",
+  "_links": {
+    "status": {
+      "href": "/v1.1/payments/sepa-credit-transfers/9d1e7c44-1111-4d6b-8e1d-6934a06f0000/status"
+    }
+  }
+}

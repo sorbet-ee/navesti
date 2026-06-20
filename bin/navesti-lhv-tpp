@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Calls GET /v1/tpp-verification over mTLS and prints the normalized result.
+require_relative "../tools/dev/lhv_dev"
+
+LhvDev.require_live!
+result = LhvDev.adapter.tpp_verification
+
+puts "access:  #{result.access}"
+puts "tpp_id:  #{result.tpp_id}"
+puts "name:    #{result.name}"
+puts "roles:   #{result.roles.join(', ')}"
+LhvDev.save_json("tpp_verification.json", result.to_h.reject { |k, _| k == :raw })
+puts "saved -> tmp/lhv/tpp_verification.json"
