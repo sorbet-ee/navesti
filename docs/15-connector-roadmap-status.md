@@ -18,17 +18,28 @@
     **simulation**, webhooks. SCA is a signed-token (`X-Signature`), not a
     redirect. A genuinely different connector. **Parked, not chosen.**
 
-## Next: Revolut Business connector
+## Next: Revolut Open Banking connector
 
-Chosen as the next connector because the cert is **self-serve** (no waiting):
-you generate your own keypair and upload the public cert + JWKS in the Revolut
-sandbox portal — the opposite of Wise OBIE's email-and-wait.
+Chosen as the next connector because the certs are **self-serve** — Revolut's
+sandbox **issues** the QWAC/QSEAL certs itself (issuer `CN=sandbox.revolut.com,
+O=Revolut, OU=Sandbox`), so no waiting on a CA or an email, unlike Wise OBIE.
 
-- **Auth:** OAuth2 + `private_key_jwt` client assertion (Revolut uses **RS256**).
-  Reuses `security/jws` — add a `sign_rs256` next to the existing PS256.
-- **Scope:** AIS + PIS (Business API).
-- **Already planned:** `docs/12` adapter #5 — *"OAuth2 with signed JWT client
-  assertion; consent redirect for OB. AIS: yes. PIS: yes (Business API)."*
+Confirmed from the sandbox certs the host provided (testing-only; client_id
+`a22b9251-…`; subject org id `PSDUK-REVCA-…`, org `Finly Ltd`; RSA-2048; valid
+to Jan 2026): this is the **PSD2 / OBIE two-cert model**, NOT the Business API I
+first assumed. So it reuses our existing machinery almost wholesale:
+
+- **Transport (QWAC):** mTLS — `Credentials#client_cert_path/client_key_path`.
+- **Signing (QSEAL):** request signing via `security/jws` (UK OBIE uses PS256,
+  which we already have; POST calls likely need a *detached* JWS in an
+  `x-jws-signature` header — a small variant of `sign_ps256`).
+- **OAuth:** consent redirect + token over mTLS (auth host
+  `sandbox-oba-auth.revolut.com`), like LHV/Wise.
+- **Scope:** AIS + PIS.
+- **Already planned:** `docs/12` adapter #5.
+- **Credentials on hand:** the two **certs** (transport + signing, in
+  `~/Downloads/*.der`); the two **private keys are still needed** to do mTLS +
+  signing. Stage cert+key pairs under `certs/` (gitignored, keys `chmod 600`).
 - **Prior art in-repo — reference only, do NOT port (docs/12 §"Order"):**
   - spikes: branches `navesti_revolut` (`revolut_ais_flow.rb`,
     `revolut_pis_flow.rb`), `revolut_ob_client` (`lib/revolut_ob_client.rb`)

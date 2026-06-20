@@ -6,6 +6,7 @@ certs/
 *.key
 *.crt
 *.pem
+*.der
 *.p12
 *.pfx
 .env
