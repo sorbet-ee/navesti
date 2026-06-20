@@ -54,6 +54,13 @@ module Navesti
           "#{identity}/openbanking/.well-known/openid-configuration"
         end
 
+        # The `aud` claim for the signed Request Object: the API host origin
+        # (scheme://host, without the /open-banking path), e.g.
+        # https://openbanking.wise-sandbox.com — per the Wise authorize example.
+        def audience
+          api_origin
+        end
+
         # Hybrid Flow authorization endpoint (identity host). `request_jwt` is the
         # signed Request Object carrying the openbanking_intent_id (ConsentId) and
         # the duplicated params; every URL param must also appear inside the JWT.
