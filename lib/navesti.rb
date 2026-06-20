@@ -44,11 +44,12 @@ require_relative "navesti/providers/lhv/dialect"
 require_relative "navesti/providers/lhv/mappers"
 require_relative "navesti/providers/lhv/adapter"
 
-# Wise (UK OBIE) — config + dialect first; mappers/adapter land in later slices
+# Wise (UK OBIE) — a second PSD2 standard alongside LHV's Berlin Group
 # (docs/14-semantic-compression-and-the-connector-layer.md).
 require_relative "navesti/providers/wise/config"
 require_relative "navesti/providers/wise/dialect"
 require_relative "navesti/providers/wise/mappers"
+require_relative "navesti/providers/wise/adapter"
 
 module Navesti
   # Constructs a bank adapter. Credentials and HTTP client are supplied by the
@@ -59,6 +60,8 @@ module Navesti
     case provider.to_sym
     when :lhv
       Providers::LHV::Adapter.new(**kwargs)
+    when :wise
+      Providers::Wise::Adapter.new(**kwargs)
     else
       raise ArgumentError, "unknown provider #{provider.inspect}"
     end

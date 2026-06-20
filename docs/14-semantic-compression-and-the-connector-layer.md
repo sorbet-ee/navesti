@@ -111,6 +111,37 @@ Mechanics expected to be **genuinely bank-specific** → stay as custom handlers
   (`ReadAccountsBasic`, `ReadBalances`, `ReadTransactions*`, …) and a consent
   `Status` lifecycle (`AwaitingAuthorisation` → authorised).
 
+## Findings after the Wise AIS path (slices 1–3b)
+
+Both predictions held — now with two concrete occurrences (LHV + Wise):
+
+**Confirmed identical → extract on connector #3** (the operation-envelope, the
+mapper plumbing, and the status/SSRF mechanics are the same shape, only the
+vocabulary/source-paths differ):
+
+- the operation envelope (`headers → optional headers → @http.request →
+  guard_response! → Mapper`) — `wise/adapter.rb` reads line-for-line like
+  `lhv/adapter.rb`;
+- `evidence(response, redact:)`, redacting token bodies — copied verbatim;
+- group-by-currency + available/booked `pick_balance` classification;
+- the typed, redaction-safe `ProviderError` rejection (`tppMessages` vs
+  `Errors[]` — same logic, different key);
+- the status table + "unknown never collapses to valid";
+- the origin-pinned `absolute()` SSRF guard (only the base path differs).
+
+**Confirmed genuinely bank-specific → stays a pluggable handler** (these are the
+*parameters* a future table must take, not absorb):
+
+- auth strategy — Wise's two-token Hybrid Flow vs LHV's single OAuth token;
+- request-object signing — `security/jws` (PS256) + the OBSeal key, which LHV
+  never needs;
+- the payload envelope — OBIE `Data` vs flat Berlin Group;
+- the consent access model — `Permissions[]` vs `availableAccounts`.
+
+So the third connector should trigger extracting a shared **operation table +
+mapper table + status table**, with **auth strategy left pluggable**. Not yet —
+two occurrences, per ADR-0004's three-times rule.
+
 ## References
 
 - OMeta — [VPRI TR-2007-003 (PDF)](https://tinlizzie.org/VPRIPapers/tr2007003_ometa.pdf),
