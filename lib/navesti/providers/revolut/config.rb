@@ -7,28 +7,41 @@ module Navesti
   module Providers
     module Revolut
       # Revolut Open Banking (UK OBIE 3.1.x) environment roots and endpoint
-      # builders. Like Wise OBIE, two hosts — but Revolut splits them differently:
+      # builders. Per Revolut's FAPI 1 Advanced migration (developer.revolut.com
+      # update 2025-03-04, "new subdomains and mandatory mTLS"), the token and all
+      # RESOURCE endpoints moved to a new mTLS host (-auth) per env; the old hosts'
+      # resource paths now return 403 "Deprecated domain" (and auth.revolut.com no
+      # longer resolves). But the browser-facing AUTHORIZE UI cannot use mTLS, so
+      # it STAYS on the old host. Confirmed from the live OIDC discovery document
+      # (GET /.well-known/openid-configuration on the -auth host, over mTLS):
       #
-      #   API host    sandbox-oba.revolut.com        (consents, accounts, payments)
-      #   token host  sandbox-oba-auth.revolut.com   (/token)
-      #   authorize   sandbox-oba.revolut.com/ui/index.html (Hybrid Flow UI)
+      #   host (mTLS)   sandbox-oba-auth.revolut.com   issuer + /token + consents/accounts/payments
+      #   authorize     sandbox-oba.revolut.com        /ui/index.html (Hybrid Flow UI, browser, no mTLS)
+      #   production →   oba-auth.revolut.com (mTLS)  +  oba.revolut.com (authorize)
       #
       # Endpoints sit at the host root (no /open-banking/v3.1 prefix — confirmed
-      # from the prior sorbet-payments spike). This is the THIRD OBIE dialect
-      # (LHV is Berlin Group; Wise + Revolut are UK OBIE) — the duplication with
-      # providers/wise is the extraction signal (docs/14, ADR-0004).
+      # against the live sandbox: client_credentials token + a signed PS256
+      # account-access-consent both succeed on sandbox-oba-auth.revolut.com). This
+      # is the THIRD OBIE dialect (LHV is Berlin Group; Wise + Revolut are UK
+      # OBIE) — the duplication with providers/wise is the extraction signal
+      # (docs/14, ADR-0004).
       class Config
         PROVIDER = "revolut"
 
         # Revolut's ASPSP id, sent as x-fapi-financial-id on every call. Fixed.
         FINANCIAL_ID = "001580000103UAvAAM"
 
+        # Two hosts per env: the mTLS API/token host (-auth), and the browser
+        # authorize host (the old domain, which can't require a client cert). The
+        # request-object `aud` is the issuer, which is the API host.
         ROOTS = {
-          sandbox:    { api: "https://sandbox-oba.revolut.com",  token: "https://sandbox-oba-auth.revolut.com" },
-          production: { api: "https://oba.revolut.com",          token: "https://auth.revolut.com" }
+          sandbox:    { api: "https://sandbox-oba-auth.revolut.com", token: "https://sandbox-oba-auth.revolut.com",
+                        authorize: "https://sandbox-oba.revolut.com" },
+          production: { api: "https://oba-auth.revolut.com",         token: "https://oba-auth.revolut.com",
+                        authorize: "https://oba.revolut.com" }
         }.freeze
 
-        attr_reader :env, :root, :token_host
+        attr_reader :env, :root, :token_host, :authorize_host
 
         def initialize(env: :sandbox)
           @env = env.to_sym
@@ -37,6 +50,7 @@ module Navesti
           end
           @root = hosts[:api]
           @token_host = hosts[:token]
+          @authorize_host = hosts[:authorize]
         end
 
         # --- OAuth / OIDC ---
@@ -54,7 +68,8 @@ module Navesti
 
         # Hybrid Flow authorize UI. `request_jwt` is the PS256-signed Request
         # Object (openbanking_intent_id = ConsentId); every URL param is also in
-        # the JWT. response_type is "code id_token".
+        # the JWT. response_type is "code id_token". Built on the browser-facing
+        # authorize host (NOT the mTLS API host — a browser has no client cert).
         def oauth_authorize_url(client_id:, redirect_uri:, scope:, request_jwt:, state: nil, nonce: nil)
           params = {
             response_type: "code id_token",
@@ -65,7 +80,7 @@ module Navesti
           }
           params[:state] = state if state
           params[:nonce] = nonce if nonce
-          "#{root}/ui/index.html?#{URI.encode_www_form(params)}"
+          "#{authorize_host}/ui/index.html?#{URI.encode_www_form(params)}"
         end
 
         # --- AISP ---

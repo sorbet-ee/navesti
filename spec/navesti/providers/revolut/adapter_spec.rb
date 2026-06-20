@@ -65,7 +65,7 @@ RSpec.describe Navesti::Providers::Revolut::Adapter do
     end
   end
 
-  it "#authorize_url builds a signed Hybrid Flow URL to the API host /ui" do
+  it "#authorize_url builds a signed Hybrid Flow URL to the browser authorize host /ui" do
     a, = adapter
     i = a.authorize_url(consent_id: "rev-aac-111", redirect_uri: "https://tpp/cb", state: "s1")
     expect(i.type).to eq(:redirect)
@@ -73,7 +73,7 @@ RSpec.describe Navesti::Providers::Revolut::Adapter do
     jwt = URI.decode_www_form(URI.parse(i.url).query).to_h.fetch("request")
     payload = JSON.parse(b64url(jwt.split(".")[1]))
     expect(payload.dig("claims", "id_token", "openbanking_intent_id", "value")).to eq("rev-aac-111")
-    expect(payload["aud"]).to eq("https://sandbox-oba.revolut.com")
+    expect(payload["aud"]).to eq("https://sandbox-oba-auth.revolut.com")
   end
 
   it "#accounts and #balances map the OBIE envelope" do

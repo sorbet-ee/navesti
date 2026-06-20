@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+# Developer connectivity harness for the Revolut (UK OBIE) sandbox — a SEPARATE
+# consumer app, not part of the Navesti gem. Roda/htmx live here and never touch
+# the gem's bundle or gemspec (Navesti stays headless: no UI, no Roda — CLAUDE.md).
+
+source "https://rubygems.org"
+
+gem "navesti", path: "../../.." # the gem under test, as a path dependency
+gem "roda", "~> 3.0"
+gem "puma", "~> 6.0"
+gem "rackup", "~> 2.0"

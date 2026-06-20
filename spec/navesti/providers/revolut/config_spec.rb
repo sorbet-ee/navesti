@@ -3,8 +3,10 @@
 RSpec.describe Navesti::Providers::Revolut::Config do
   subject(:config) { described_class.new(env: :sandbox) }
 
-  let(:api)   { "https://sandbox-oba.revolut.com" }
-  let(:token) { "https://sandbox-oba-auth.revolut.com" }
+  # Post-migration: mTLS API/token host (-auth), separate browser authorize host.
+  let(:api)       { "https://sandbox-oba-auth.revolut.com" }
+  let(:token)     { "https://sandbox-oba-auth.revolut.com" }
+  let(:authorize) { "https://sandbox-oba.revolut.com" }
 
   describe "endpoint builders" do
     it "builds the token URL on the auth host" do
@@ -34,10 +36,13 @@ RSpec.describe Navesti::Providers::Revolut::Config do
       expect(described_class::FINANCIAL_ID).to eq("001580000103UAvAAM")
     end
 
-    it "selects the production hosts" do
+    it "selects the production hosts (mTLS API host + browser authorize host)" do
       prod = described_class.new(env: :production)
-      expect(prod.token_url).to eq("https://auth.revolut.com/token")
-      expect(prod.accounts_url).to eq("https://oba.revolut.com/accounts")
+      expect(prod.token_url).to eq("https://oba-auth.revolut.com/token")
+      expect(prod.accounts_url).to eq("https://oba-auth.revolut.com/accounts")
+      expect(prod.oauth_authorize_url(
+        client_id: "c", redirect_uri: "https://tpp/cb", scope: "openid accounts", request_jwt: "j"
+      )).to start_with("https://oba.revolut.com/ui/index.html?")
     end
 
     it "raises on an unknown env" do
@@ -53,8 +58,8 @@ RSpec.describe Navesti::Providers::Revolut::Config do
       )
     end
 
-    it "targets the authorize UI on the API host" do
-      expect(url).to start_with("#{api}/ui/index.html?")
+    it "targets the authorize UI on the browser authorize host (not the mTLS API host)" do
+      expect(url).to start_with("#{authorize}/ui/index.html?")
     end
 
     it "carries response_type=code id_token, the request object, and params" do
@@ -76,13 +81,12 @@ RSpec.describe Navesti::Providers::Revolut::Config do
       expect(config.absolute("#{api}/accounts/504")).to eq("#{api}/accounts/504")
     end
 
-    it "rejects off-origin, the token host, look-alikes, userinfo, downgrade, traversal" do
+    it "rejects off-origin, look-alikes, userinfo, downgrade, traversal" do
       [
         "https://evil.com/accounts",
-        "#{token}/accounts",                               # different host
-        "https://sandbox-oba.revolut.com.evil.com/x",
-        "https://sandbox-oba.revolut.com@evil.com/x",
-        "http://sandbox-oba.revolut.com/x",                # scheme downgrade
+        "https://sandbox-oba-auth.revolut.com.evil.com/x",
+        "https://sandbox-oba-auth.revolut.com@evil.com/x",
+        "http://sandbox-oba-auth.revolut.com/x",           # scheme downgrade
         "//evil.com/x",
         "/accounts/../../etc",
         ""
