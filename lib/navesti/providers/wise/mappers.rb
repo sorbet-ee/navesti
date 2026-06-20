@@ -101,7 +101,9 @@ module Navesti
             consent_id: data["ConsentId"],
             status: Dialect.consent_status(data["Status"]),
             raw_status: data["Status"],
-            valid_until: data["ExpirationDateTime"],
+            # AIS consents carry ExpirationDateTime; PIS payment consents carry
+            # a CutOffDateTime (30 min) instead — surface whichever is present.
+            valid_until: data["ExpirationDateTime"] || data["CutOffDateTime"],
             raw: evidence(response)
           )
         end
@@ -128,7 +130,43 @@ module Navesti
           )
         end
 
+        # POST /pisp/domestic-payments → Navesti::PaymentSubmission.
+        #
+        # No interaction here: OBIE runs SCA during the payment-CONSENT
+        # authorization (Hybrid Flow), so by the time the payment-order is
+        # POSTed the instruction is already committed — the submission carries a
+        # status, not a redirect.
+        def payment_submission(response, idempotency_key: nil)
+          data = response.json["Data"] || {}
+          ref = payment_reference(data["DomesticPaymentId"])
+          status = Dialect.payment_status(data["Status"], provider_reference: ref, raw: evidence(response))
+
+          PaymentSubmission.new(
+            status: status,
+            provider_reference: ref,
+            idempotency_key: idempotency_key,
+            submitted_at: Time.now.utc.iso8601,
+            raw: evidence(response)
+          )
+        end
+
+        # GET /pisp/domestic-payments/{id} → Navesti::PaymentStatus.
+        def payment_status(response, payment_id: nil)
+          data = response.json["Data"] || {}
+          Dialect.payment_status(
+            data["Status"],
+            provider_reference: payment_id && payment_reference(payment_id),
+            raw: evidence(response)
+          )
+        end
+
         # --- helpers ---
+
+        def payment_reference(payment_id)
+          return nil if payment_id.to_s.empty?
+
+          ProviderReference.new(value: payment_id, kind: :payment, connector: Config::PROVIDER)
+        end
 
         # First inner Account[] identifier tagged with an IBAN scheme, or nil.
         def iban_for(acc)

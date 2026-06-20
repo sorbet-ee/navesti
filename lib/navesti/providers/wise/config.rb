@@ -104,6 +104,28 @@ module Navesti
           "#{aisp_base}/accounts/#{encode_segment(account_id)}/transactions"
         end
 
+        # --- PISP (v3.1.11) ---
+        #
+        # OBIE payment initiation is a two-resource flow: a payment-order
+        # *consent* (authorized via the same Hybrid Flow as AIS) and then the
+        # payment-order itself, which references the ConsentId.
+
+        def domestic_payment_consents_url
+          "#{pisp_base}/domestic-payment-consents"
+        end
+
+        def domestic_payment_consent_url(consent_id)
+          "#{pisp_base}/domestic-payment-consents/#{encode_segment(consent_id)}"
+        end
+
+        def domestic_payments_url
+          "#{pisp_base}/domestic-payments"
+        end
+
+        def domestic_payment_url(payment_id)
+          "#{pisp_base}/domestic-payments/#{encode_segment(payment_id)}"
+        end
+
         # Resolves a HATEOAS href to a full URL, pinned to the configured API
         # origin AND the `/open-banking` base path (same SSRF guard as LHV's
         # Config#absolute — origin + root-path containment). Bank-supplied or
@@ -125,6 +147,10 @@ module Navesti
 
         def aisp_base
           "#{root}/#{API_VERSION}/aisp"
+        end
+
+        def pisp_base
+          "#{root}/#{API_VERSION}/pisp"
         end
 
         # The scheme://host[:port] of the API root, without the /open-banking

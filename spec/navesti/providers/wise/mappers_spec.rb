@@ -83,4 +83,38 @@ RSpec.describe Navesti::Providers::Wise::Mappers do
       expect(token.raw[:body]).not_to include("wise-access-token-AAAA")
     end
   end
+
+  describe ".payment_submission" do
+    subject(:submission) do
+      described_class.payment_submission(Fixtures.wise_response("domestic_payment_accepted", status: 201), idempotency_key: "idem-1")
+    end
+
+    it "maps DomesticPaymentId + Status into a PaymentSubmission (no interaction)" do
+      expect(submission).to be_a(Navesti::PaymentSubmission)
+      expect(submission.provider_reference.value).to eq("urn-wise-dp-999")
+      expect(submission.provider_reference.kind).to eq(:payment)
+      expect(submission.status.status).to eq(:pending_execution)
+      expect(submission.side_effect_possible).to be(true)
+      expect(submission.interaction).to be_nil
+      expect(submission.idempotency_key).to eq("idem-1")
+    end
+  end
+
+  describe ".payment_status" do
+    it "maps the order Status, carrying the payment reference" do
+      st = described_class.payment_status(Fixtures.wise_response("domestic_payment_accepted"), payment_id: "urn-wise-dp-999")
+      expect(st).to be_a(Navesti::PaymentStatus)
+      expect(st.status).to eq(:pending_execution)
+      expect(st.provider_reference.value).to eq("urn-wise-dp-999")
+    end
+  end
+
+  describe ".consent (payment consent)" do
+    it "uses CutOffDateTime as valid_until when ExpirationDateTime is absent" do
+      consent = described_class.consent(Fixtures.wise_response("domestic_payment_consent_awaiting", status: 201))
+      expect(consent.consent_id).to eq("urn-wise-dpc-555")
+      expect(consent.status).to eq(:received)
+      expect(consent.valid_until).to eq("2026-06-20T10:30:00.000Z")
+    end
+  end
 end
