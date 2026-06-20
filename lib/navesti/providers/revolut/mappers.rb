@@ -8,17 +8,8 @@ module Navesti
       # Maps Revolut (UK OBIE) JSON into Navesti value objects. Same OBIE `Data`
       # envelope as Wise — the shared shape is the docs/14 extraction signal.
       module Mappers
+        extend Navesti::Mappers::Evidence # provides #evidence (shared substrate)
         module_function
-
-        def evidence(response, redact: false)
-          body = response.body
-          headers = response.headers
-          if redact
-            body = Navesti::Redaction.scrub(body.to_s)
-            headers = headers.transform_values { |v| Navesti::Redaction.scrub(v.to_s) }
-          end
-          { status: response.status, headers: headers, body: body, captured_at: Time.now.utc.iso8601 }
-        end
 
         # GET /accounts → [Account]
         def accounts(response)

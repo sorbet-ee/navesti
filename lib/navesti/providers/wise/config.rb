@@ -20,6 +20,8 @@ module Navesti
       # dialect to separate "PSD2-family mechanics" from "LHV quirks"
       # (docs/14-semantic-compression-and-the-connector-layer.md).
       class Config
+        include Navesti::Http::OriginGuard # provides #absolute (origin-pinned), validated against #root
+
         PROVIDER = "wise"
         API_VERSION = "v3.1.11"
 
@@ -126,24 +128,15 @@ module Navesti
           "#{pisp_base}/domestic-payments/#{encode_segment(payment_id)}"
         end
 
-        # Resolves a HATEOAS href to a full URL, pinned to the configured API
-        # origin AND the `/open-banking` base path (same SSRF guard as LHV's
-        # Config#absolute — origin + root-path containment). Bank-supplied or
-        # tampered links can never redirect a credentialed request off-origin.
-        def absolute(href)
-          s = href.to_s.strip
-          raise UnsafeUrlError, "empty URL" if s.empty?
-          raise UnsafeUrlError, "refusing protocol-relative URL" if s.start_with?("//")
-          raise UnsafeUrlError, "refusing path traversal" if s.include?("..")
-
-          url = s.start_with?("/") ? "#{api_origin}#{s}" : s
-          uri = parse_uri(url)
-          raise UnsafeUrlError, "refusing URL outside the configured API root" unless allowed_root?(uri)
-
-          url
-        end
-
         private
+
+        # Wise emits host-absolute hrefs that already carry the `/open-banking`
+        # base path, so a leading-slash href resolves against the host-only
+        # origin (not `root`, which would double the base path). OriginGuard
+        # still validates the result against `root` (origin + `/open-banking`).
+        def link_origin
+          api_origin
+        end
 
         def aisp_base
           "#{root}/#{API_VERSION}/aisp"
@@ -163,25 +156,6 @@ module Navesti
 
         def encode_segment(value)
           ERB::Util.url_encode(value.to_s)
-        end
-
-        def parse_uri(string)
-          URI.parse(string)
-        rescue URI::InvalidURIError
-          raise UnsafeUrlError, "invalid URL"
-        end
-
-        # Same origin (scheme/host/port) AND path under the configured root path
-        # (e.g. /open-banking).
-        def allowed_root?(uri)
-          root_uri = URI.parse(root)
-          return false unless uri.scheme == root_uri.scheme &&
-                              uri.host == root_uri.host &&
-                              uri.port == root_uri.port
-
-          path = uri.path.to_s
-          base = root_uri.path.to_s
-          base.empty? || path == base || path.start_with?("#{base}/")
         end
       end
     end

@@ -11,6 +11,8 @@ module Navesti
       # docs/providers/lhv/swagger-notes.md. This is the Estonian LHV Pank
       # PSD2 / Berlin Group interface, NOT the UK LHV Bank Limited product.
       class Config
+        include Navesti::Http::OriginGuard # provides #absolute (origin-pinned), validated against #root
+
         PROVIDER = "lhv"
 
         ROOTS = {
@@ -84,26 +86,6 @@ module Navesti
           "#{root}/v1/accounts/#{encode_segment(account_id)}/balances"
         end
 
-        # Resolves a HATEOAS href to a full URL, **pinned to the configured
-        # origin AND the PSD2 API root path**. A leading-slash path resolves
-        # against root; any URL is then allowed only if its scheme/host/port
-        # match root and its path is under root's path (e.g. /psd2). Otherwise
-        # UnsafeUrlError — so a bank-supplied or tampered link can never redirect
-        # a credentialed request off-origin (SSRF / token exfiltration), nor a
-        # browser redirect to an arbitrary page. Reuse for every actionable link.
-        def absolute(href)
-          s = href.to_s.strip
-          raise UnsafeUrlError, "empty URL" if s.empty?
-          raise UnsafeUrlError, "refusing protocol-relative URL" if s.start_with?("//")
-          raise UnsafeUrlError, "refusing path traversal" if s.include?("..")
-
-          url = s.start_with?("/") ? "#{root}#{s}" : s
-          uri = parse_uri(url)
-          raise UnsafeUrlError, "refusing URL outside the configured API root" unless allowed_root?(uri)
-
-          url
-        end
-
         # --- PIS JSON (v1.1) ---
 
         def sepa_payment_url
@@ -126,24 +108,6 @@ module Navesti
         # addressed path or inject a query. Encoding keeps everything on-origin.
         def encode_segment(value)
           ERB::Util.url_encode(value.to_s)
-        end
-
-        def parse_uri(string)
-          URI.parse(string)
-        rescue URI::InvalidURIError
-          raise UnsafeUrlError, "invalid URL"
-        end
-
-        # Same origin (scheme/host/port) AND path under the configured root path.
-        def allowed_root?(uri)
-          root_uri = URI.parse(root)
-          return false unless uri.scheme == root_uri.scheme &&
-                              uri.host == root_uri.host &&
-                              uri.port == root_uri.port
-
-          path = uri.path.to_s
-          base = root_uri.path.to_s # e.g. "/psd2"
-          base.empty? || path == base || path.start_with?("#{base}/")
         end
       end
     end

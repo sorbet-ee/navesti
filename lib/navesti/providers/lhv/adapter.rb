@@ -20,6 +20,9 @@ module Navesti
       # Stateless: every call takes what it needs as arguments. Persists
       # nothing; returns normalized facts with raw evidence.
       class Adapter
+        include Adapters::ErrorGuard # guard_response! / guard_oauth_response! / raise_provider_error!
+        include Adapters::Headers    # bearer_headers
+
         attr_reader :config, :credentials
 
         def initialize(credentials:, env: :sandbox, http: HTTP::Client.new, request_id: nil)
@@ -326,49 +329,14 @@ module Navesti
           { "X-Request-ID" => @request_id.call, "Accept" => "application/json" }.merge(extra)
         end
 
-        def bearer_headers(access_token, extra = {})
-          base_headers("Authorization" => "Bearer #{access_token}").merge(extra)
+        # Hooks for Adapters::ErrorGuard. LHV is Berlin Group: the error code
+        # lives in tppMessages[ category == "ERROR" ].code.
+        def provider_label
+          "LHV"
         end
 
-        # AIS/PIS guard: 401 -> ConsentError (host re-supplies credentials;
-        # Navesti never refreshes). Other failures -> ProviderError.
-        def guard_response!(response)
-          return if response.success?
-
-          raise ConsentError, "LHV rejected the access token (HTTP #{response.status})" if response.status == 401
-
-          raise_provider_error!(response)
-        end
-
-        # OAuth guard: OAuth errors carry an `error` field on both 400 and 401,
-        # so surface it rather than masking 401 as a ConsentError.
-        def guard_oauth_response!(response)
-          return if response.success?
-
-          raise_provider_error!(response)
-        end
-
-        # Raises a typed, redaction-safe ProviderError from a failed response,
-        # preferring an in-body tppMessages code or OAuth `error`.
-        def raise_provider_error!(response)
-          body = response.json_or_nil
-          if body.is_a?(Hash)
-            err = (body["tppMessages"] || []).find { |m| m["category"] == "ERROR" }
-            if err
-              raise ProviderError.new(
-                "LHV error #{err['code']} (HTTP #{response.status})",
-                http_status: response.status, provider_code: err["code"]
-              )
-            end
-            if body["error"]
-              raise ProviderError.new(
-                "LHV OAuth error #{body['error']} (HTTP #{response.status})",
-                http_status: response.status, provider_code: body["error"]
-              )
-            end
-          end
-
-          raise ProviderError.new("LHV request failed (HTTP #{response.status})", http_status: response.status)
+        def provider_error_code(body)
+          (body["tppMessages"] || []).find { |m| m["category"] == "ERROR" }&.dig("code")
         end
       end
     end

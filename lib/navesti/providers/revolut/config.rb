@@ -26,6 +26,8 @@ module Navesti
       # OBIE) — the duplication with providers/wise is the extraction signal
       # (docs/14, ADR-0004).
       class Config
+        include Navesti::Http::OriginGuard # provides #absolute (origin-pinned); root has no base path
+
         PROVIDER = "revolut"
 
         # Revolut's ASPSP id, sent as x-fapi-financial-id on every call. Fixed.
@@ -127,38 +129,10 @@ module Navesti
           "#{root}/domestic-payments/#{encode_segment(payment_id)}"
         end
 
-        # Resolves a HATEOAS href, pinned to the API origin (same SSRF guard as
-        # LHV/Wise). Revolut endpoints sit at the root, so the base path is "/".
-        def absolute(href)
-          s = href.to_s.strip
-          raise UnsafeUrlError, "empty URL" if s.empty?
-          raise UnsafeUrlError, "refusing protocol-relative URL" if s.start_with?("//")
-          raise UnsafeUrlError, "refusing path traversal" if s.include?("..")
-
-          url = s.start_with?("/") ? "#{root}#{s}" : s
-          uri = parse_uri(url)
-          raise UnsafeUrlError, "refusing URL outside the configured API root" unless allowed_root?(uri)
-
-          url
-        end
-
         private
 
         def encode_segment(value)
           ERB::Util.url_encode(value.to_s)
-        end
-
-        def parse_uri(string)
-          URI.parse(string)
-        rescue URI::InvalidURIError
-          raise UnsafeUrlError, "invalid URL"
-        end
-
-        # Same origin (scheme/host/port) as the API root. Revolut's API root has
-        # no base path, so any path on the origin is in-scope.
-        def allowed_root?(uri)
-          root_uri = URI.parse(root)
-          uri.scheme == root_uri.scheme && uri.host == root_uri.host && uri.port == root_uri.port
         end
       end
     end

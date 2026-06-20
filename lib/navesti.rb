@@ -37,6 +37,14 @@ require_relative "navesti/security/certificate_identity"
 require_relative "navesti/security/jws"
 require_relative "navesti/http/response"
 require_relative "navesti/http/client"
+require_relative "navesti/http/origin_guard"
+
+# Shared connector substrate (extracted under ADR-0004's three-times rule from
+# LHV + Wise + Revolut): the mapper evidence wrapper and the adapter
+# error/header mixins. Bank-specific vocabulary stays in each dialect.
+require_relative "navesti/mappers/evidence"
+require_relative "navesti/adapters/error_guard"
+require_relative "navesti/adapters/headers"
 
 # Providers.
 require_relative "navesti/providers/lhv/config"

@@ -9,23 +9,8 @@ module Navesti
       # payload as evidence on every object (docs/01, docs/07). Mapping adds a
       # canonical reading alongside the original; it never mutates raw.
       module Mappers
+        extend Navesti::Mappers::Evidence # provides #evidence (shared substrate)
         module_function
-
-        # Builds the raw-evidence hash carried by provider-derived objects.
-        #
-        # redact: true scrubs secrets from the body and headers before storing —
-        # used for OAuth token responses, whose body *is* the secret. Other
-        # responses keep verbatim evidence (their bodies are not secrets), so
-        # auditability is preserved where it is safe.
-        def evidence(response, redact: false)
-          body = response.body
-          headers = response.headers
-          if redact
-            body = Navesti::Redaction.scrub(body.to_s)
-            headers = headers.transform_values { |v| Navesti::Redaction.scrub(v.to_s) }
-          end
-          { status: response.status, headers: headers, body: body, captured_at: Time.now.utc.iso8601 }
-        end
 
         # GET /v1/tpp-verification → Navesti::TppVerification
         #

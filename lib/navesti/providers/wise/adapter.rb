@@ -26,6 +26,9 @@ module Navesti
       #
       # Stateless: every call takes what it needs; persists nothing.
       class Adapter
+        include Adapters::ErrorGuard # guard_response! / guard_oauth_response! / raise_provider_error!
+        include Adapters::Headers    # bearer_headers
+
         attr_reader :config, :credentials
 
         # The signed Request Object is short-lived: it only has to survive the
@@ -281,48 +284,14 @@ module Navesti
           { "x-fapi-interaction-id" => @request_id.call, "Accept" => "application/json" }.merge(extra)
         end
 
-        def bearer_headers(access_token, extra = {})
-          base_headers("Authorization" => "Bearer #{access_token}").merge(extra)
+        # Hooks for Adapters::ErrorGuard. Wise is UK OBIE: the error code lives
+        # in Errors[].ErrorCode.
+        def provider_label
+          "Wise"
         end
 
-        # AIS guard: 401 -> ConsentError (host re-supplies credentials; Navesti
-        # never refreshes). Other failures -> ProviderError.
-        def guard_response!(response)
-          return if response.success?
-
-          raise ConsentError, "Wise rejected the access token (HTTP #{response.status})" if response.status == 401
-
-          raise_provider_error!(response)
-        end
-
-        # OAuth guard: surface the error field rather than masking 401.
-        def guard_oauth_response!(response)
-          return if response.success?
-
-          raise_provider_error!(response)
-        end
-
-        # Raises a typed, redaction-safe ProviderError, preferring an OBIE
-        # Errors[].ErrorCode, then an OAuth `error`, then the top-level Code.
-        def raise_provider_error!(response)
-          body = response.json_or_nil
-          if body.is_a?(Hash)
-            err = Array(body["Errors"]).find { |e| e.is_a?(Hash) && e["ErrorCode"] }
-            if err
-              raise ProviderError.new(
-                "Wise error #{err['ErrorCode']} (HTTP #{response.status})",
-                http_status: response.status, provider_code: err["ErrorCode"]
-              )
-            end
-            if body["error"]
-              raise ProviderError.new(
-                "Wise OAuth error #{body['error']} (HTTP #{response.status})",
-                http_status: response.status, provider_code: body["error"]
-              )
-            end
-          end
-
-          raise ProviderError.new("Wise request failed (HTTP #{response.status})", http_status: response.status)
+        def provider_error_code(body)
+          Array(body["Errors"]).find { |e| e.is_a?(Hash) && e["ErrorCode"] }&.dig("ErrorCode")
         end
       end
     end

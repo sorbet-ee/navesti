@@ -17,20 +17,8 @@ module Navesti
       # (docs/14-semantic-compression-and-the-connector-layer.md). Only the
       # source paths differ; they live here, in the dialect's mapper.
       module Mappers
+        extend Navesti::Mappers::Evidence # provides #evidence (shared substrate)
         module_function
-
-        # Builds the raw-evidence hash carried by provider-derived objects.
-        # redact: true scrubs secret-bearing bodies (token responses) before
-        # storing; other bodies are kept verbatim for auditability.
-        def evidence(response, redact: false)
-          body = response.body
-          headers = response.headers
-          if redact
-            body = Navesti::Redaction.scrub(body.to_s)
-            headers = headers.transform_values { |v| Navesti::Redaction.scrub(v.to_s) }
-          end
-          { status: response.status, headers: headers, body: body, captured_at: Time.now.utc.iso8601 }
-        end
 
         # GET /aisp/accounts → [Navesti::Account]
         #

@@ -14,6 +14,9 @@ module Navesti
       # header) over the body of every write, verified by Revolut against the
       # JWKS the host publishes (kid/tan join the signature to that JWKS).
       class Adapter
+        include Adapters::ErrorGuard # guard_response! / guard_oauth_response! / raise_provider_error!
+        include Adapters::Headers    # bearer_headers
+
         attr_reader :config, :credentials
 
         TAN_CLAIM = "http://openbanking.org.uk/tan"
@@ -171,38 +174,14 @@ module Navesti
             "Accept" => "application/json" }.merge(extra)
         end
 
-        def bearer_headers(access_token, extra = {})
-          base_headers("Authorization" => "Bearer #{access_token}").merge(extra)
+        # Hooks for Adapters::ErrorGuard. Revolut is UK OBIE: the error code
+        # lives in Errors[].ErrorCode (same as Wise).
+        def provider_label
+          "Revolut"
         end
 
-        def guard_response!(response)
-          return if response.success?
-
-          raise ConsentError, "Revolut rejected the access token (HTTP #{response.status})" if response.status == 401
-
-          raise_provider_error!(response)
-        end
-
-        def guard_oauth_response!(response)
-          return if response.success?
-
-          raise_provider_error!(response)
-        end
-
-        def raise_provider_error!(response)
-          body = response.json_or_nil
-          if body.is_a?(Hash)
-            err = Array(body["Errors"]).find { |e| e.is_a?(Hash) && e["ErrorCode"] }
-            if err
-              raise ProviderError.new("Revolut error #{err['ErrorCode']} (HTTP #{response.status})",
-                                      http_status: response.status, provider_code: err["ErrorCode"])
-            end
-            if body["error"]
-              raise ProviderError.new("Revolut OAuth error #{body['error']} (HTTP #{response.status})",
-                                      http_status: response.status, provider_code: body["error"])
-            end
-          end
-          raise ProviderError.new("Revolut request failed (HTTP #{response.status})", http_status: response.status)
+        def provider_error_code(body)
+          Array(body["Errors"]).find { |e| e.is_a?(Hash) && e["ErrorCode"] }&.dig("ErrorCode")
         end
       end
     end
