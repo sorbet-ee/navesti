@@ -44,6 +44,10 @@ tools/browser/.state/
 # Ignore Byebug command history file.
 .byebug_history
 
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
 ## Specific to RubyMotion:
 .dat*
 .repl_history

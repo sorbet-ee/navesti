@@ -51,6 +51,11 @@ require_relative "navesti/providers/wise/dialect"
 require_relative "navesti/providers/wise/mappers"
 require_relative "navesti/providers/wise/adapter"
 
+# Revolut (UK OBIE) — config + dialect first; mappers/adapter + detached
+# x-jws-signature land in later slices (docs/15).
+require_relative "navesti/providers/revolut/config"
+require_relative "navesti/providers/revolut/dialect"
+
 module Navesti
   # Constructs a bank adapter. Credentials and HTTP client are supplied by the
   # host; Navesti holds them only for the call's duration.
