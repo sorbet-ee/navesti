@@ -46,9 +46,11 @@ require_relative "navesti/mappers/evidence"
 require_relative "navesti/adapters/error_guard"
 require_relative "navesti/adapters/headers"
 
-# Shared dialect vocabulary, one module per banking standard (docs/adr/0007).
-# A provider dialect adopts a family and declares only its deltas.
+# Shared dialect vocabulary + response grammar, one module per banking standard
+# (docs/adr/0007). A provider dialect/mapper adopts a family and declares only
+# its deltas (provider name, dialect, permission overrides).
 require_relative "navesti/dialects/uk_obie"
+require_relative "navesti/mappers/uk_obie"
 
 # Providers.
 require_relative "navesti/providers/lhv/config"
