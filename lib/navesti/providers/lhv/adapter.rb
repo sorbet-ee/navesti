@@ -331,6 +331,12 @@ module Navesti
 
         # Hooks for Adapters::ErrorGuard. LHV is Berlin Group: the error code
         # lives in tppMessages[ category == "ERROR" ].code.
+        #
+        # NB: a Berlin Group error message always carries a `code` (it is a
+        # required field), so the only divergence from the pre-substrate adapter
+        # — an ERROR message with NO code falling through to the generic
+        # "request failed" instead of "error " (blank) — is unreachable in
+        # practice and an accepted, cleaner normalization (reviewed 2026-06).
         def provider_label
           "LHV"
         end

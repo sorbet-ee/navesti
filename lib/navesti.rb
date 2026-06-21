@@ -51,6 +51,7 @@ require_relative "navesti/adapters/headers"
 # its deltas (provider name, dialect, permission overrides).
 require_relative "navesti/dialects/uk_obie"
 require_relative "navesti/mappers/uk_obie"
+require_relative "navesti/adapters/uk_obie_flow"
 
 # Providers.
 require_relative "navesti/providers/lhv/config"
