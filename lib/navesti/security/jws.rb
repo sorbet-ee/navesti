@@ -31,6 +31,18 @@ module Navesti
         "#{signing_input}.#{base64url(signature)}"
       end
 
+      # Signs a raw payload STRING as a compact PS256 JWS with a caller-supplied
+      # header. Used for the OBIE `x-jws-signature` over a request body, whose
+      # header carries `crit` + the `http://openbanking.org.uk/tan` claim. Returns
+      # header.payload.signature.
+      def sign_ps256_payload(payload, signing_key_pem:, header:)
+        signing_input = "#{base64url(JSON.generate(header))}.#{base64url(payload)}"
+        signature = rsa_private_key(signing_key_pem).sign_pss(
+          "SHA256", signing_input, salt_length: :digest, mgf1_hash: "SHA256"
+        )
+        "#{signing_input}.#{base64url(signature)}"
+      end
+
       # Loads the RSA private key, raising a path-free CredentialError on a bad
       # PEM or a non-private key (docs/10 redaction rule — never echo key material).
       def rsa_private_key(pem)

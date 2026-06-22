@@ -6,6 +6,7 @@ certs/
 *.key
 *.crt
 *.pem
+*.der
 *.p12
 *.pfx
 .env
@@ -42,6 +43,10 @@ tools/browser/.state/
 
 # Ignore Byebug command history file.
 .byebug_history
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
 
 ## Specific to RubyMotion:
 .dat*

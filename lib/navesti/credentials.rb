@@ -22,6 +22,7 @@ module Navesti
     attribute :tpp_id, required: false
     attribute :signing_key_path, required: false # OBSeal RSA key (OBIE JWS)
     attribute :signing_kid, required: false       # JWKS key id for the JWS header
+    attribute :tan, required: false               # OBIE trusted-anchor (JWKS host domain), e.g. "sorbet.ee"
 
     # Builds Credentials from environment variables (the documented contract
     # in .env.example). Paths are validated lazily by the HTTP client, not here.

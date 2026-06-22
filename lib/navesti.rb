@@ -51,6 +51,13 @@ require_relative "navesti/providers/wise/dialect"
 require_relative "navesti/providers/wise/mappers"
 require_relative "navesti/providers/wise/adapter"
 
+# Revolut (UK OBIE) — config + dialect first; mappers/adapter + detached
+# x-jws-signature land in later slices (docs/15).
+require_relative "navesti/providers/revolut/config"
+require_relative "navesti/providers/revolut/dialect"
+require_relative "navesti/providers/revolut/mappers"
+require_relative "navesti/providers/revolut/adapter"
+
 module Navesti
   # Constructs a bank adapter. Credentials and HTTP client are supplied by the
   # host; Navesti holds them only for the call's duration.
@@ -62,6 +69,8 @@ module Navesti
       Providers::LHV::Adapter.new(**kwargs)
     when :wise
       Providers::Wise::Adapter.new(**kwargs)
+    when :revolut
+      Providers::Revolut::Adapter.new(**kwargs)
     else
       raise ArgumentError, "unknown provider #{provider.inspect}"
     end
